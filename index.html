@@ -1,0 +1,226 @@
+<!doctype html><html lang="vi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F4E78">
+<link rel="manifest" href="manifest.json">
+<title>EVAPCO QC — Chụp & Báo cáo</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e1726;color:#fff}
+.hide{display:none!important}
+#setup{max-width:520px;margin:0 auto;padding:18px}
+#setup h1{font-size:20px;margin:8px 0 4px}
+#setup p.sub{color:#9fb3c8;margin:0 0 16px;font-size:13px}
+.fld{margin:12px 0}
+.fld label{display:block;font-size:13px;color:#9fb3c8;margin-bottom:6px}
+.fld input{width:100%;padding:13px;border-radius:12px;border:1px solid #2b3b52;background:#16233a;color:#fff;font-size:17px}
+.big{width:100%;padding:16px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:18px;font-weight:800;margin-top:10px}
+.note{font-size:12px;color:#7f93a8;margin-top:14px;line-height:1.6}
+#cam{position:fixed;inset:0;background:#000}
+#vid{width:100%;height:100%;object-fit:cover}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
+#fring{position:fixed;width:72px;height:72px;border:3px solid #ffcf33;border-radius:50%;margin:-36px 0 0 -36px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:5}
+#fring.on{opacity:1;transform:scale(.78)}
+#topbar{position:absolute;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top,0)) 8px 8px;background:linear-gradient(#000b,transparent);z-index:4}
+#types{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+#types::-webkit-scrollbar{display:none}
+#types button{flex:0 0 auto;padding:7px 13px;border-radius:18px;border:1px solid #ffffff44;background:#ffffff22;color:#fff;font-size:14px;font-weight:700;white-space:nowrap}
+#types button.on{background:#1a73e8;border-color:#1a73e8}
+#ptrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px}
+#ptrow button{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:26px;font-weight:800}
+#ptlbl{min-width:130px;text-align:center;font-size:22px;font-weight:800}
+#ptcnt{font-size:14px;color:#ffd23f;font-weight:700;margin-left:8px}
+#fhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0));color:#fff;background:#0007;font-size:12px;padding:5px 12px;border-radius:14px;z-index:3}
+#dock{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(18px + env(safe-area-inset-bottom,0));background:linear-gradient(transparent,#000a);z-index:4}
+#shoot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#1a73e8}
+#libBtn,#doneBtn{min-width:64px;height:52px;border-radius:14px;border:0;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:0 14px}
+#lib{position:fixed;inset:0;background:#0e1726;z-index:10;display:flex;flex-direction:column}
+#lib header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0)) 14px 10px;border-bottom:1px solid #213450}
+#lib header h2{font-size:17px;margin:0;flex:1}
+#grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px}
+.card{background:#16233a;border-radius:12px;overflow:hidden}
+.card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#000}
+.card .r{display:flex;gap:6px;padding:6px}
+.card input{flex:1;min-width:0;padding:7px;border-radius:8px;border:1px solid #2b3b52;background:#0e1726;color:#fff;font-size:14px;font-weight:700}
+.card .del{background:#c0392b;color:#fff;border:0;border-radius:8px;width:38px;font-size:16px}
+#expBtn{margin:0 14px calc(14px + env(safe-area-inset-bottom,0));padding:16px;border:0;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:800}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:#111e;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+</style></head><body>
+
+<section id="setup">
+  <h1>EVAPCO QC — Chụp ảnh lắp thử</h1>
+  <p class="sub">Chọn Section/PAIR → chụp theo điểm → xuất gói ảnh đã đặt tên đúng.</p>
+  <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
+  <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
+  <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
+  <button class="big" onclick="start()">📷 Mở camera</button>
+  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A — gồm thả dọi) · Gap · Marking · Map · Độ dày.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Tổng thể/Map/Độ dày chụp tự do.</p>
+</section>
+
+<section id="cam" class="hide">
+  <video id="vid" autoplay playsinline muted onclick="tapFocus(event)"></video>
+  <div id="flash"></div>
+  <div id="fring"></div>
+  <div id="topbar">
+    <div id="types"></div>
+    <div id="ptrow">
+      <button id="ptPrev" onclick="ptMove(-1)">‹</button>
+      <span id="ptlbl">A1<span id="ptcnt"></span></span>
+      <button id="ptNext" onclick="ptMove(1)">›</button>
+    </div>
+  </div>
+  <div id="fhint">Chạm vào hình để lấy nét</div>
+  <div id="dock">
+    <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
+    <button id="shoot" onclick="snap()"></button>
+    <button id="doneBtn" onclick="openLib()">Xong</button>
+  </div>
+</section>
+
+<section id="lib" class="hide">
+  <header>
+    <button onclick="closeLib()" style="background:#26405f;color:#fff;padding:9px 14px;border-radius:10px;border:0;font-weight:700">‹ Chụp tiếp</button>
+    <h2 id="libTitle">Ảnh</h2>
+  </header>
+  <div id="grid"></div>
+  <button id="expBtn" onclick="exportBundle()">📦 Xuất gói ảnh</button>
+</section>
+
+<div id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const TYPES=[
+ {k:'TT', name:'Tổng thể', kind:'free'},
+ {k:'L',  name:'Level',    kind:'num', per:1},
+ {k:'A',  name:'Dim',      kind:'num', per:2},
+ {k:'GAP',name:'Gap',      kind:'pair',per:1},
+ {k:'MK', name:'Marking',  kind:'list',per:1, list:['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B']},
+ {k:'MAP',name:'Map',      kind:'free'},
+ {k:'TH', name:'Độ dày',   kind:'free'},
+];
+let photos=[], camStream=null, camTrack=null, tIdx=2;
+let pos=TYPES.map(()=>({num:1,mk:0}));
+
+['iSec','iPair','iUser'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+function SEC(){return $('iSec').value.trim();}
+function PAIR(){return $('iPair').value.trim();}
+function USER(){return $('iUser').value.trim();}
+
+function start(){
+  if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
+  ['iSec','iPair','iUser'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
+  $('setup').classList.add('hide'); $('cam').classList.remove('hide');
+  buildTypes(); syncUI(); openCam();
+}
+function buildTypes(){
+  $('types').innerHTML='';
+  TYPES.forEach((t,i)=>{const b=document.createElement('button');b.textContent=t.name;b.onclick=()=>setType(i);$('types').appendChild(b);});
+}
+function curType(){return TYPES[tIdx];}
+function curBase(){const t=curType(),p=pos[tIdx];
+  if(t.kind==='num') return t.k+p.num;
+  if(t.kind==='pair')return t.k+p.num+'-'+p.num;
+  if(t.kind==='list')return t.k+t.list[p.mk];
+  return t.k;}
+function curLabel(){const t=curType(),p=pos[tIdx];
+  if(t.kind==='num') return t.k+p.num;
+  if(t.kind==='pair')return p.num+'-'+p.num;
+  if(t.kind==='list')return t.list[p.mk];
+  return t.name;}
+function perLimit(){return curType().per||Infinity;}
+function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b).length;}
+function curName(){const b=curBase();return b+'.'+(baseCount(b)+1);}
+
+function setType(i){tIdx=i;syncUI();}
+function ptMove(d){const t=curType(),p=pos[tIdx];
+  if(t.kind==='num'||t.kind==='pair')p.num=Math.max(1,p.num+d);
+  else if(t.kind==='list')p.mk=Math.max(0,Math.min(t.list.length-1,p.mk+d));
+  syncUI();}
+function advance(){const t=curType(),p=pos[tIdx];
+  if(t.kind==='num'||t.kind==='pair')p.num++;
+  else if(t.kind==='list'){if(p.mk<t.list.length-1)p.mk++;}
+  syncUI();}
+function nextLabel(){const t=curType(),p=pos[tIdx];
+  if(t.kind==='num') return t.k+(p.num+1);
+  if(t.kind==='pair')return (p.num+1)+'-'+(p.num+1);
+  if(t.kind==='list')return p.mk<t.list.length-1?t.list[p.mk+1]:'hết';
+  return '';}
+
+function syncUI(){
+  [...$('types').children].forEach((b,i)=>b.classList.toggle('on',i===tIdx));
+  const free=(curType().kind==='free');
+  $('ptPrev').style.visibility=free?'hidden':'visible';
+  $('ptNext').style.visibility=free?'hidden':'visible';
+  const lim=perLimit(),c=baseCount(curBase());
+  const cnt=(lim!==Infinity)?'  '+c+'/'+lim:'';
+  $('ptlbl').innerHTML=curLabel()+'<span id="ptcnt">'+cnt+'</span>';
+  $('cnt').textContent=photos.length;
+}
+
+async function openCam(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    $('vid').srcObject=camStream; camTrack=camStream.getVideoTracks()[0];
+    try{const caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
+      if(caps.focusMode&&caps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});
+    }catch(e){}
+  }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
+}
+async function tapFocus(e){
+  const fr=$('fring');fr.style.left=e.clientX+'px';fr.style.top=e.clientY+'px';
+  fr.classList.remove('on');void fr.offsetWidth;fr.classList.add('on');setTimeout(()=>fr.classList.remove('on'),900);
+  if(!camTrack||!camTrack.getCapabilities)return;
+  try{const caps=camTrack.getCapabilities(),r=$('vid').getBoundingClientRect();
+    const x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
+    if(caps.focusMode&&caps.focusMode.includes('manual')){
+      const adv={focusMode:'manual'};if('pointsOfInterest'in caps)adv.pointsOfInterest=[{x,y}];
+      await camTrack.applyConstraints({advanced:[adv]});
+      setTimeout(()=>{try{if(caps.focusMode.includes('continuous'))camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(_){}},2500);
+    }}catch(_){}
+}
+
+function snap(){
+  const v=$('vid'),vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;
+  const big=curType().kind==='free';
+  let sx=0,sy=0,sw=vw,sh=vh;
+  if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
+  const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
+  const c=document.createElement('canvas');c.width=cw;c.height=ch;
+  c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
+  const nm=curName();
+  photos.unshift({name:nm,b64:c.toDataURL('image/jpeg',.85).split(',')[1],gen:big});
+  $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
+  if(navigator.vibrate)navigator.vibrate(40);
+  const b=curBase(),lim=perLimit();
+  if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
+  else{toast('✓ '+nm);syncUI();}
+}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600);}
+
+function openLib(){renderGrid();$('lib').classList.remove('hide');}
+function closeLib(){$('lib').classList.add('hide');syncUI();}
+function renderGrid(){
+  $('libTitle').textContent='Ảnh ('+photos.length+')';
+  $('grid').innerHTML='';
+  photos.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='card';
+    d.innerHTML='<img src="data:image/jpeg;base64,'+p.b64+'"><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div>';
+    $('grid').appendChild(d);
+  });
+}
+function rename(i,v){photos[i].name=(v.trim()||photos[i].name);}
+function del(i){photos.splice(i,1);renderGrid();}
+
+function exportBundle(){
+  if(!photos.length){alert('Chưa có ảnh.');return;}
+  const data={section:SEC(),pair:PAIR(),user:USER(),at:new Date().toISOString(),photos:photos.map(p=>({name:p.name,b64:p.b64}))};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='EVAPCO_S'+SEC()+'_PAIR'+PAIR()+'_'+photos.length+'anh.json';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Đã xuất '+photos.length+' ảnh');
+}
+</script>
+</body></html>

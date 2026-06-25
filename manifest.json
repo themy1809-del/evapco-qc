@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "lang": "vi",
+  "name": "EVAPCO QC — Chụp & Báo cáo lắp thử",
+  "short_name": "EVAPCO QC",
+  "description": "Chụp ảnh theo điểm đo (Section/PAIR/L1/A1.1) → AI sắp ảnh + đọc số đo → xuất 3 báo cáo lắp thử đúng template.",
+  "categories": ["business", "productivity", "utilities"],
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1F4E78",
+  "theme_color": "#1F4E78",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
