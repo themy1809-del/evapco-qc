@@ -254,22 +254,26 @@ function exportBundle(){
 
 const TOKEN='EV-themy-2026';
 function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
+async function sendOne(url,p){
+  try{
+    const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),30000);
+    const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:p.b64})});
+    clearTimeout(to);
+    const j=await r.json();
+    if(j&&j.ok){p.up=true;idbPut(p);return true;}
+  }catch(e){}
+  return false;
+}
 async function sendDrive(){
   const url=DRV(); if(!url){alert('Bạn chưa dán Link Drive ở màn hình đầu.');return;}
-  if(!photos.length){alert('Chưa có ảnh.');return;}
+  const todo=photos.filter(p=>!p.up);
+  if(!todo.length){alert(photos.length?'Tất cả ảnh đã lên Drive ✓':'Chưa có ảnh.');return;}
   const btn=$('sendBtn'); btn.disabled=true;
-  const todo=photos.filter(p=>!p.up); let ok=0,fail=0;
-  for(let k=0;k<todo.length;k++){
-    const p=todo[k]; btn.textContent='☁️ Đang gửi '+(k+1)+'/'+todo.length+'…';
-    try{
-      const r=await fetch(url,{method:'POST',body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:p.b64})});
-      const j=await r.json();
-      if(j&&j.ok){p.up=true;idbPut(p);ok++;}else{fail++;}
-    }catch(e){fail++;}
-    renderGrid();
-  }
+  let done=0,ok=0,fail=0,i=0;
+  async function worker(){ while(i<todo.length){ const p=todo[i++]; const r=await sendOne(url,p); done++; r?ok++:fail++; btn.textContent='☁️ Đang gửi '+done+'/'+todo.length+'…'; renderGrid(); } }
+  await Promise.all(Array.from({length:Math.min(6,todo.length)},worker));   // gửi song song 6 ảnh
   btn.disabled=false; btn.textContent='☁️ Gửi lên Drive';
-  toast(ok+' ảnh đã lên Drive'+(fail?(' · '+fail+' lỗi — bấm gửi lại'):' ✓'));
+  toast(ok+' ảnh đã lên Drive'+(fail?(' · '+fail+' chưa gửi — bấm Gửi lại'):' ✓'));
 }
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
