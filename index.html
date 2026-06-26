@@ -109,6 +109,7 @@ let photos=[], camStream=null, camTrack=null, tIdx=2;
 let pos=TYPES.map(()=>({num:1,mk:0}));
 
 ['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec';
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
@@ -229,7 +230,7 @@ function exportBundle(){
 }
 
 const TOKEN='EV-themy-2026';
-function DRV(){return $('iDrive').value.trim();}
+function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
 async function sendDrive(){
   const url=DRV(); if(!url){alert('Bạn chưa dán Link Drive ở màn hình đầu.');return;}
   if(!photos.length){alert('Chưa có ảnh.');return;}
