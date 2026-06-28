@@ -131,7 +131,7 @@ function updateCnt(){const e=$('cnt');if(e)e.textContent=photos.length;}
 async function loadSaved(){await idbOpen();const s=await idbAll();if(s&&s.length){s.sort((a,b)=>(b.t||0)-(a.t||0));photos=s;}updateCnt();}
 
 ['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
-if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec';
+if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec';
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
@@ -293,7 +293,7 @@ function exportBundle(){
 }
 
 const TOKEN='EV-themy-2026';
-function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
+function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec');}
 async function sendOne(url,p){
   try{
     const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),30000);
