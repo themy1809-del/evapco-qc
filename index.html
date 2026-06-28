@@ -30,6 +30,9 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #ptlbl{min-width:130px;text-align:center;font-size:22px;font-weight:800}
 #ptcnt{font-size:14px;color:#ffd23f;font-weight:700;margin-left:8px}
 #fhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0));color:#fff;background:#0007;font-size:12px;padding:5px 12px;border-radius:14px;z-index:3}
+#camBtn{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:22px}
+#landhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;background:#c0392bee;font-size:15px;font-weight:800;padding:12px 18px;border-radius:14px;z-index:5;text-align:center;max-width:80%}
+#landhint.hide{display:none}
 #dock{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(18px + env(safe-area-inset-bottom,0));background:linear-gradient(transparent,#000a);z-index:4}
 #shoot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#1a73e8}
 #libBtn,#doneBtn{min-width:64px;height:52px;border-radius:14px;border:0;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:0 14px}
@@ -42,6 +45,9 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .card .r{display:flex;gap:6px;padding:6px}
 .card input{flex:1;min-width:0;padding:7px;border-radius:8px;border:1px solid #2b3b52;background:#0e1726;color:#fff;font-size:14px;font-weight:700}
 .card .del{background:#c0392b;color:#fff;border:0;border-radius:8px;width:38px;font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;padding:0 6px 8px}
+.chips .chip{flex:1;min-width:34px;padding:6px 0;border:0;border-radius:7px;background:#26405f;color:#cfe3f5;font-size:12px;font-weight:700}
+.chips .chip:active{background:#3b82f6;color:#fff}
 #sendBtn{margin:0 14px 8px;padding:16px;border:0;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:800}
 #sendBtn:disabled{opacity:.7}
 #expBtn{margin:0 14px 8px;padding:12px;border:0;border-radius:12px;background:#26405f;color:#cfe3f5;font-size:13px;font-weight:700}
@@ -75,8 +81,10 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
       <button id="ptPrev" onclick="ptMove(-1)">‹</button>
       <span id="ptlbl">A1<span id="ptcnt"></span></span>
       <button id="ptNext" onclick="ptMove(1)">›</button>
+      <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
     </div>
   </div>
+  <div id="landhint" class="hide">📱↔️ Xoay máy NẰM NGANG để chụp 4:3 chuẩn</div>
   <div id="fhint">Chạm vào hình để lấy nét</div>
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
@@ -108,6 +116,7 @@ const TYPES=[
  {k:'MK', name:'Marking',  kind:'list',per:1, list:['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B']},
  {k:'MAP',name:'Map',      kind:'free'},
  {k:'TH', name:'Độ dày',   kind:'free'},
+ {k:'PS', name:'📌 Phát sinh', kind:'free'},
 ];
 let photos=[], camStream=null, camTrack=null, tIdx=2;
 let pos=TYPES.map(()=>({num:1,mk:0}));
@@ -178,15 +187,37 @@ function syncUI(){
   $('cnt').textContent=photos.length;
 }
 
+let camList=[], camPick=0;
+async function listCams(){
+  try{const ds=await navigator.mediaDevices.enumerateDevices();camList=ds.filter(d=>d.kind==='videoinput');
+    $('camBtn').style.display=camList.length>1?'':'none';}catch(e){}
+}
 async function openCam(){
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    if(camStream){camStream.getTracks().forEach(t=>t.stop());}
+    let vc={width:{ideal:1920},height:{ideal:1080}};
+    if(camList.length>1 && camList[camPick]) vc.deviceId={exact:camList[camPick].deviceId};
+    else vc.facingMode='environment';
+    camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
     $('vid').srcObject=camStream; camTrack=camStream.getVideoTracks()[0];
+    if(!camList.length) await listCams();
     try{const caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
       if(caps.focusMode&&caps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});
     }catch(e){}
+    orientHint();
   }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
 }
+async function switchCam(){
+  if(camList.length<2){await listCams();}
+  if(camList.length<2)return;
+  camPick=(camPick+1)%camList.length; await openCam();
+}
+function orientHint(){
+  var portrait = window.matchMedia('(orientation: portrait)').matches;
+  var h=$('landhint'); if(h) h.className = portrait ? '' : 'hide';
+}
+window.addEventListener('orientationchange',()=>setTimeout(orientHint,200));
+window.addEventListener('resize',orientHint);
 async function tapFocus(e){
   const fr=$('fring');fr.style.left=e.clientX+'px';fr.style.top=e.clientY+'px';
   fr.classList.remove('on');void fr.offsetWidth;fr.classList.add('on');setTimeout(()=>fr.classList.remove('on'),900);
@@ -228,10 +259,19 @@ function renderGrid(){
   photos.forEach((p,i)=>{
     const d=document.createElement('div');d.className='card';
     const badge=p.up?'<span class="upok">✓ Drive</span>':'<span class="uppend">⏳ chưa gửi</span>';
-    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+p.b64+'">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div>';
+    const chips=['TT','L','A','GAP','MK','MAP','TH'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+p.b64+'">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
     $('grid').appendChild(d);
   });
 }
+function nextName(k){
+  if(k==='A'){let pts={};photos.forEach(p=>{const m=/^A(\d+)\.(\d+)/.exec(p.name);if(m)pts[m[1]]=Math.max(pts[m[1]]||0,+m[2]);});let pn=1;while((pts[pn]||0)>=2)pn++;return 'A'+pn+'.'+((pts[pn]||0)+1);}
+  if(k==='L'){let mx=0;photos.forEach(p=>{const m=/^L(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'L'+(mx+1)+'.1';}
+  if(k==='GAP'){let mx=0;photos.forEach(p=>{const m=/^GAP(\d+)-/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'GAP'+n+'-'+n+'.1';}
+  if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=photos.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
+  const c=photos.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
+}
+function quickName(i,k){photos[i].name=nextName(k);idbPut(photos[i]);renderGrid();}
 function rename(i,v){photos[i].name=(v.trim()||photos[i].name);idbPut(photos[i]);}
 function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
 function clearUploaded(){
