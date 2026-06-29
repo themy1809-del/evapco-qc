@@ -31,8 +31,9 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #ptcnt{font-size:14px;color:#ffd23f;font-weight:700;margin-left:8px}
 #fhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0));color:#fff;background:#0007;font-size:12px;padding:5px 12px;border-radius:14px;z-index:3}
 #camBtn{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:22px}
-#landhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;background:#c0392bee;font-size:15px;font-weight:800;padding:12px 18px;border-radius:14px;z-index:5;text-align:center;max-width:80%}
-#landhint.hide{display:none}
+#zoomctl{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
+#zoomctl button{width:44px;height:44px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:22px;font-weight:800}
+#zlab{color:#fff;background:#0008;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px}
 #dock{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(18px + env(safe-area-inset-bottom,0));background:linear-gradient(transparent,#000a);z-index:4}
 #shoot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#1a73e8}
 #libBtn,#doneBtn{min-width:64px;height:52px;border-radius:14px;border:0;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:0 14px}
@@ -84,7 +85,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
       <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
     </div>
   </div>
-  <div id="landhint" class="hide">📱↔️ Xoay máy NẰM NGANG để chụp 4:3 chuẩn</div>
+  <div id="zoomctl"><button onclick="zoomBy(1)">＋</button><span id="zlab">1.0x</span><button onclick="zoomBy(-1)">－</button></div>
   <div id="fhint">Chạm vào hình để lấy nét</div>
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
@@ -204,7 +205,7 @@ async function openCam(){
     try{const caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
       if(caps.focusMode&&caps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});
     }catch(e){}
-    orientHint();
+    detectZoom();
   }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
 }
 async function switchCam(){
@@ -212,12 +213,36 @@ async function switchCam(){
   if(camList.length<2)return;
   camPick=(camPick+1)%camList.length; await openCam();
 }
-function orientHint(){
-  var portrait = window.matchMedia('(orientation: portrait)').matches;
-  var h=$('landhint'); if(h) h.className = portrait ? '' : 'hide';
+let zoom=1, zCaps=null;
+function detectZoom(){
+  zCaps=null; zoom=1;
+  try{var caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
+    if(caps.zoom && caps.zoom.max>caps.zoom.min){ zCaps=caps.zoom;
+      try{zoom=camTrack.getSettings().zoom||caps.zoom.min||1;}catch(_){zoom=caps.zoom.min||1;} }
+  }catch(_){}
+  applyZoom();
 }
-window.addEventListener('orientationchange',()=>setTimeout(orientHint,200));
-window.addEventListener('resize',orientHint);
+function zoomBy(dir){
+  if(zCaps){var st=zCaps.step||((zCaps.max-zCaps.min)/10)||1; zoom=Math.min(zCaps.max,Math.max(zCaps.min,zoom+dir*st));}
+  else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));}
+  applyZoom();
+}
+function applyZoom(){
+  var lab=$('zlab');
+  if(zCaps){
+    try{camTrack.applyConstraints({advanced:[{zoom:zoom}]});}catch(_){}
+    $('vid').style.transform='';
+    if(lab)lab.textContent=(zoom/(zCaps.min||1)).toFixed(1)+'x';
+  }else{
+    $('vid').style.transformOrigin='center center';
+    $('vid').style.transform='scale('+zoom+')';
+    if(lab)lab.textContent=zoom.toFixed(1)+'x';
+  }
+}
+(function(){var d0=0;function dst(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+  document.addEventListener('touchstart',function(e){if(e.touches.length===2)d0=dst(e.touches);},{passive:true});
+  document.addEventListener('touchmove',function(e){if(e.touches.length===2&&d0){var d=dst(e.touches);if(Math.abs(d-d0)>18){zoomBy(d>d0?1:-1);d0=d;}}},{passive:true});
+})();
 async function tapFocus(e){
   const fr=$('fring');fr.style.left=e.clientX+'px';fr.style.top=e.clientY+'px';
   fr.classList.remove('on');void fr.offsetWidth;fr.classList.add('on');setTimeout(()=>fr.classList.remove('on'),900);
@@ -236,6 +261,7 @@ function snap(){
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
   if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
+  if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
   const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
