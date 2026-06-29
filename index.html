@@ -266,8 +266,9 @@ function snap(){
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
-  const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',.85).split(',')[1],gen:big};
+  const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',.8).split(',')[1],gen:big};
   photos.unshift(ph); idbPut(ph);   // lưu ngay vào máy — không lo mất
+  autoSend(ph);   // gửi NGẦM ngay khi chụp -> cuối buổi gần như đã lên Drive hết
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
   const b=curBase(),lim=perLimit();
@@ -320,6 +321,16 @@ function exportBundle(){
 
 const TOKEN='EV-themy-2026';
 function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec');}
+let _auto=0;
+async function autoSend(p){   // gui nen 1 anh ngay khi chup (toi da 4 cung luc)
+  if(p.up) return;
+  var url=DRV(); if(!url || !navigator.onLine) return;
+  if(_auto>=4) return;        // de danh bang thong cho viec chup tiep
+  _auto++;
+  try{ await sendOne(url,p); }catch(_){}
+  _auto--;
+  try{ if(typeof syncUI==='function') syncUI(); }catch(_){}
+}
 async function sendOne(url,p){
   try{
     const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),30000);
@@ -337,7 +348,7 @@ async function sendDrive(){
   const btn=$('sendBtn'); btn.disabled=true;
   let done=0,ok=0,fail=0,i=0;
   async function worker(){ while(i<todo.length){ const p=todo[i++]; const r=await sendOne(url,p); done++; r?ok++:fail++; btn.textContent='☁️ Đang gửi '+done+'/'+todo.length+'…'; renderGrid(); } }
-  await Promise.all(Array.from({length:Math.min(6,todo.length)},worker));   // gửi song song 6 ảnh
+  await Promise.all(Array.from({length:Math.min(8,todo.length)},worker));   // gửi song song 8 ảnh
   btn.disabled=false; btn.textContent='☁️ Gửi lên Drive';
   toast(ok+' ảnh đã lên Drive'+(fail?(' · '+fail+' chưa gửi — bấm Gửi lại'):' ✓'));
 }
