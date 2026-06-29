@@ -28,6 +28,8 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #ptrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px}
 #ptrow button{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:26px;font-weight:800}
 #ptlbl{min-width:130px;text-align:center;font-size:22px;font-weight:800}
+#ptTxt{width:120px;text-align:center;font-size:20px;font-weight:800;border:0;border-bottom:2px solid #fff;background:transparent;color:#fff;outline:none}
+#ptTxt::placeholder{color:#ffffff8c;font-size:15px}
 #ptcnt{font-size:14px;color:#ffd23f;font-weight:700;margin-left:8px}
 #fhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0));color:#fff;background:#0007;font-size:12px;padding:5px 12px;border-radius:14px;z-index:3}
 #camBtn{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:22px}
@@ -80,7 +82,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
     <div id="types"></div>
     <div id="ptrow">
       <button id="ptPrev" onclick="ptMove(-1)">‹</button>
-      <span id="ptlbl">A1<span id="ptcnt"></span></span>
+      <span id="ptlbl">A1<span id="ptcnt"></span></span><input id="ptTxt" oninput="ptType()" placeholder="vd 1-4" style="display:none">
       <button id="ptNext" onclick="ptMove(1)">›</button>
       <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
     </div>
@@ -113,14 +115,14 @@ const TYPES=[
  {k:'TT', name:'Tổng thể', kind:'free'},
  {k:'L',  name:'Level',    kind:'num', per:1},
  {k:'A',  name:'Dim',      kind:'num', per:2},
- {k:'GAP',name:'Gap',      kind:'pair',per:3},
- {k:'MK', name:'Marking',  kind:'list',per:1, list:['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B']},
+ {k:'GAP',name:'Gap',      kind:'freepos',per:3,def:'1-1'},
+ {k:'MK', name:'Marking',  kind:'freepos',per:1,def:'1-1'},
  {k:'MAP',name:'Map',      kind:'free'},
  {k:'TH', name:'Độ dày',   kind:'free'},
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
 ];
 let photos=[], camStream=null, camTrack=null, tIdx=2;
-let pos=TYPES.map(()=>({num:1,mk:0}));
+let pos=TYPES.map(()=>({num:1,mk:0,txt:''}));
 
 // ===== Chống mất ảnh: tự lưu vào máy (IndexedDB) =====
 let DB=null;
@@ -152,17 +154,20 @@ function curBase(){const t=curType(),p=pos[tIdx];
   if(t.kind==='num') return t.k+p.num;
   if(t.kind==='pair')return t.k+p.num+'-'+p.num;
   if(t.kind==='list')return t.k+t.list[p.mk];
+  if(t.kind==='freepos')return t.k+((p.txt||t.def).replace(/\s/g,''));
   return t.k;}
 function curLabel(){const t=curType(),p=pos[tIdx];
   if(t.kind==='num') return t.k+p.num;
   if(t.kind==='pair')return p.num+'-'+p.num;
   if(t.kind==='list')return t.list[p.mk];
+  if(t.kind==='freepos')return (p.txt||t.def);
   return t.name;}
 function perLimit(){return curType().per||Infinity;}
 function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b).length;}
 function curName(){const b=curBase();return b+'.'+(baseCount(b)+1);}
 
 function setType(i){tIdx=i;syncUI();}
+function ptType(){pos[tIdx].txt=$('ptTxt').value;syncUI();}
 function ptMove(d){const t=curType(),p=pos[tIdx];
   if(t.kind==='num'||t.kind==='pair')p.num=Math.max(1,p.num+d);
   else if(t.kind==='list')p.mk=Math.max(0,Math.min(t.list.length-1,p.mk+d));
@@ -175,16 +180,19 @@ function nextLabel(){const t=curType(),p=pos[tIdx];
   if(t.kind==='num') return t.k+(p.num+1);
   if(t.kind==='pair')return (p.num+1)+'-'+(p.num+1);
   if(t.kind==='list')return p.mk<t.list.length-1?t.list[p.mk+1]:'hết';
+  if(t.kind==='freepos')return 'gõ vị trí mới';
   return '';}
 
 function syncUI(){
   [...$('types').children].forEach((b,i)=>b.classList.toggle('on',i===tIdx));
-  const free=(curType().kind==='free');
-  $('ptPrev').style.visibility=free?'hidden':'visible';
-  $('ptNext').style.visibility=free?'hidden':'visible';
+  const tp=curType(), free=(tp.kind==='free'), fp=(tp.kind==='freepos');
+  $('ptPrev').style.visibility=(free||fp)?'hidden':'visible';
+  $('ptNext').style.visibility=(free||fp)?'hidden':'visible';
+  const pt=$('ptTxt'); pt.style.display=fp?'':'none'; $('ptlbl').style.display=fp?'none':'';
   const lim=perLimit(),c=baseCount(curBase());
   const cnt=(lim!==Infinity)?'  '+c+'/'+lim:'';
-  $('ptlbl').innerHTML=curLabel()+'<span id="ptcnt">'+cnt+'</span>';
+  if(fp){ if(document.activeElement!==pt) pt.value=pos[tIdx].txt||tp.def; pt.placeholder='vd '+tp.def; }
+  else { $('ptlbl').innerHTML=curLabel()+'<span id="ptcnt">'+cnt+'</span>'; }
   $('cnt').textContent=photos.length;
 }
 
