@@ -291,11 +291,11 @@ function snap(){
   let sx=0,sy=0,sw=vw,sh=vh;
   if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
-  const sc=Math.min(1,2000/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
+  const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
-  const q=big?0.82:0.9;   // diem A/L (co chu so) chup net hon
+  const q=big?0.8:0.85;   // nhe hon de khong lag; diem A/L net hon chut
   const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',q).split(',')[1],gen:big};
   photos.unshift(ph); idbPut(ph);   // lưu ngay vào máy — không lo mất
   autoSend(ph);   // gửi NGẦM ngay khi chụp -> cuối buổi gần như đã lên Drive hết
