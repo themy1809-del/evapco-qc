@@ -35,6 +35,9 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #camBtn{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:22px}
 #zoomctl{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
 #zoomctl button{width:44px;height:44px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:22px;font-weight:800}
+#zpre{display:flex;flex-direction:column;gap:6px}
+#zpre button{width:44px;height:32px;border-radius:12px;border:0;background:#0008;color:#fff;font-size:13px;font-weight:800}
+#zpre button.on{background:#1a73e8}
 #zlab{color:#fff;background:#0008;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px}
 #dock{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(18px + env(safe-area-inset-bottom,0));background:linear-gradient(transparent,#000a);z-index:4}
 #shoot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#1a73e8}
@@ -87,7 +90,12 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
       <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
     </div>
   </div>
-  <div id="zoomctl"><button onclick="zoomBy(1)">＋</button><span id="zlab">1.0x</span><button onclick="zoomBy(-1)">－</button></div>
+  <div id="zoomctl">
+    <button onclick="zoomBy(1)">＋</button>
+    <span id="zlab">1.0x</span>
+    <button onclick="zoomBy(-1)">－</button>
+    <div id="zpre"></div>
+  </div>
   <div id="fhint">Chạm vào hình để lấy nét</div>
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
@@ -221,18 +229,30 @@ async function switchCam(){
   if(camList.length<2)return;
   camPick=(camPick+1)%camList.length; await openCam();
 }
+// ===== ZOOM BAM DUNG CAMERA CUA MAY (co 0.5x neu may co ong goc rong) =====
 let zoom=1, zCaps=null;
 function detectZoom(){
   zCaps=null; zoom=1;
   try{var caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
     if(caps.zoom && caps.zoom.max>caps.zoom.min){ zCaps=caps.zoom;
-      try{zoom=camTrack.getSettings().zoom||caps.zoom.min||1;}catch(_){zoom=caps.zoom.min||1;} }
+      var mn=caps.zoom.min||1, mx=caps.zoom.max||1;
+      zoom=(mn<=1&&mx>=1)?1:mn;   // mo o 1x binh thuong; bam - de xuong 0.5x (neu may cho phep)
+    }
   }catch(_){}
-  applyZoom();
+  buildPresets(); applyZoom();
+}
+function buildPresets(){   // nut nhanh 0.5x / 1x / 2x theo dung kha nang may
+  var box=$('zpre'); if(!box) return; box.innerHTML='';
+  if(!zCaps) return;
+  var mn=zCaps.min||1, mx=zCaps.max||1, want=[0.5,1,2,3];
+  want.filter(function(z){return z>=mn-1e-6 && z<=mx+1e-6;}).forEach(function(z){
+    var b=document.createElement('button'); b.textContent=(z<1?String(z):z.toFixed(0))+'x';
+    b.onclick=function(){zoom=z;applyZoom();}; box.appendChild(b);
+  });
 }
 function zoomBy(dir){
-  if(zCaps){var st=zCaps.step||((zCaps.max-zCaps.min)/10)||1; zoom=Math.min(zCaps.max,Math.max(zCaps.min,zoom+dir*st));}
-  else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));}
+  if(zCaps){var st=zCaps.step||((zCaps.max-zCaps.min)/10)||0.1; zoom=Math.min(zCaps.max,Math.max(zCaps.min,+(zoom+dir*st).toFixed(3)));}
+  else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));}  // khong co ong rong -> chi zoom vao duoc
   applyZoom();
 }
 function applyZoom(){
@@ -240,12 +260,13 @@ function applyZoom(){
   if(zCaps){
     try{camTrack.applyConstraints({advanced:[{zoom:zoom}]});}catch(_){}
     $('vid').style.transform='';
-    if(lab)lab.textContent=(zoom/(zCaps.min||1)).toFixed(1)+'x';
+    if(lab)lab.textContent=zoom.toFixed(1)+'x';   // hien DUNG so zoom that cua may (0.5x/1x/2x)
   }else{
     $('vid').style.transformOrigin='center center';
     $('vid').style.transform='scale('+zoom+')';
     if(lab)lab.textContent=zoom.toFixed(1)+'x';
   }
+  var box=$('zpre'); if(box)[...box.children].forEach(function(b){b.classList.toggle('on',Math.abs(parseFloat(b.textContent)-zoom)<0.05);});
 }
 (function(){var d0=0;function dst(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
   document.addEventListener('touchstart',function(e){if(e.touches.length===2)d0=dst(e.touches);},{passive:true});
@@ -270,11 +291,12 @@ function snap(){
   let sx=0,sy=0,sw=vw,sh=vh;
   if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
-  const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
+  const sc=Math.min(1,2000/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
-  const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',.8).split(',')[1],gen:big};
+  const q=big?0.82:0.9;   // diem A/L (co chu so) chup net hon
+  const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',q).split(',')[1],gen:big};
   photos.unshift(ph); idbPut(ph);   // lưu ngay vào máy — không lo mất
   autoSend(ph);   // gửi NGẦM ngay khi chụp -> cuối buổi gần như đã lên Drive hết
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
