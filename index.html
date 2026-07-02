@@ -156,7 +156,9 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
-if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec';
+// may cu con luu link Drive cu -> tu chuyen sang link moi (v3, co action=pairs)
+if(($('iDrive').value||'').indexOf('AKfycbxIg3W')>=0){$('iDrive').value='';localStorage.removeItem('ev_iDrive');}
+if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec';
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
@@ -373,7 +375,7 @@ async function exportBundle(){
 }
 
 const TOKEN='EV-themy-2026';
-function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec');}
+function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
 let _auto=0;
 async function autoSend(p){   // gui nen 1 anh ngay khi chup (toi da 4 cung luc)
   if(p.up) return;
