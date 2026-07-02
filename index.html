@@ -327,7 +327,34 @@ async function openCam(){
       if(caps.focusMode&&caps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});
     }catch(e){}
     detectZoom();
+    setTimeout(updTorchBtn,700);   // hien nut den pin neu camera ho tro
   }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
+}
+// ===== DEN PIN camera (xuong toi trong xuong) =====
+let torchOn=false;
+function updTorchBtn(){
+  let b=document.getElementById('torchBtn');
+  if(!b){
+    b=document.createElement('button'); b.id='torchBtn'; b.textContent='🔦';
+    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 196px);right:10px;z-index:60;width:42px;height:42px;border:0;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:18px;display:none';
+    b.onclick=toggleTorch; document.body.appendChild(b);
+  }
+  try{
+    const caps=camTrack&&camTrack.getCapabilities?camTrack.getCapabilities():{};
+    b.style.display=(caps&&caps.torch)?'block':'none';
+    if(!caps||!caps.torch) torchOn=false;
+  }catch(e){b.style.display='none';}
+}
+function toggleTorch(){
+  try{
+    const caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
+    if(!caps.torch){toast('Máy không hỗ trợ đèn pin camera');return;}
+    torchOn=!torchOn;
+    camTrack.applyConstraints({advanced:[{torch:torchOn}]});
+    const b=document.getElementById('torchBtn');
+    if(b)b.style.background=torchOn?'#eab308':'rgba(255,255,255,.15)';
+    toast(torchOn?'🔦 Bật đèn':'Tắt đèn');
+  }catch(e){toast('Không bật được đèn');}
 }
 async function switchCam(){
   if(camList.length<2){await listCams();}
@@ -390,7 +417,26 @@ async function tapFocus(e){
     }}catch(_){}
 }
 
-function snap(){
+function canvasToB64(cv,q){
+  return new Promise(function(res){
+    try{
+      if(cv.toBlob){
+        cv.toBlob(function(b){
+          if(!b){res(cv.toDataURL('image/jpeg',q).split(',')[1]);return;}
+          const fr=new FileReader();
+          fr.onload=function(){res(String(fr.result).split(',')[1]);};
+          fr.onerror=function(){res(cv.toDataURL('image/jpeg',q).split(',')[1]);};
+          fr.readAsDataURL(b);
+        },'image/jpeg',q);
+      } else res(cv.toDataURL('image/jpeg',q).split(',')[1]);
+    }catch(e){res(cv.toDataURL('image/jpeg',q).split(',')[1]);}
+  });
+}
+let _snapBusy=false;
+async function snap(){
+  if(_snapBusy) return;
+  _snapBusy=true;
+  try{
   const S=grabUpright(); if(!S)return;      // khung hinh DA XOAY DUNG CHIEU (cam ngang van ra anh dung)
   const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
@@ -401,11 +447,12 @@ function snap(){
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
-  const q=big?0.8:0.85;   // nhe hon de khong lag; diem A/L net hon chut
-  const b64=c.toDataURL('image/jpeg',q).split(',')[1];
+  const q=big?0.8:0.85;
   const ts=240/Math.max(cw,ch),tc2=document.createElement('canvas');tc2.width=Math.max(1,Math.round(cw*ts));tc2.height=Math.max(1,Math.round(ch*ts));
   tc2.getContext('2d').drawImage(c,0,0,tc2.width,tc2.height);
-  const tb=tc2.toDataURL('image/jpeg',0.6).split(',')[1];
+  // nen BAT DONG BO -> bam chup khong bi khung
+  const _r=await Promise.all([canvasToB64(c,q),canvasToB64(tc2,0.6)]);
+  const b64=_r[0], tb=_r[1];
   const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
@@ -417,6 +464,7 @@ function snap(){
   if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
   else{toast('✓ '+nm);syncUI();}
   saveState();
+  }finally{_snapBusy=false;}
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600);}
 
@@ -455,15 +503,49 @@ function checkMissing(){
   L.push('Độ dày: '+(Object.keys(bases).some(b=>b.startsWith('TH'))?'✓':'(không bắt buộc)'));
   alert('📋 KIỂM THIẾU — Section '+SEC()+' / PAIR '+PAIR()+'\n\n'+L.join('\n')+'\n\n(Lưu ý: app chỉ đếm theo tên ảnh; section không có mục nào thì bỏ qua dòng đó)');
 }
-function openLib(){renderGrid();$('lib').classList.remove('hide');}
+let libFilter='all';
+function setFilter(f){libFilter=f;renderGrid();}
+function updLibTitle(){
+  const up=photos.filter(p=>p.up).length, pend=photos.length-up;
+  const t=$('libTitle'); if(t)t.textContent='Ảnh: '+photos.length+' · ✓'+up+' · ⏳'+pend;
+  const sb=$('sendBtn');
+  if(sb&&!sb.disabled) sb.textContent = pend ? ('☁️ Gửi '+pend+' ảnh lên Drive') : '☁️ Đã gửi hết ✓';
+  [['fAll','all'],['fPend','pend'],['fUp','up']].forEach(([id,m])=>{
+    const b=document.getElementById(id);
+    if(b)b.style.background=(libFilter===m)?'#1a73e8':'#ffffff22';
+  });
+}
+function updBadge(p){
+  const card=document.querySelector('#grid .card[data-id="'+p.id+'"]');
+  if(card){
+    const b=card.querySelector('.bdg');
+    if(b){b.className='bdg '+(p.up?'upok':'uppend');b.textContent=p.up?'✓ Drive':'⏳ chưa gửi';}
+  }
+  updLibTitle();
+}
+function openLib(){
+  if(!document.getElementById('fAll')){
+    const h=document.querySelector('#lib header');
+    if(h){
+      [['fAll','Tất cả'],['fPend','⏳ Chưa gửi'],['fUp','✓ Drive']].forEach(([id,lb])=>{
+        const b=document.createElement('button'); b.id=id; b.textContent=lb;
+        b.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#ffffff22;flex:0 0 auto';
+        b.onclick=()=>setFilter(id==='fAll'?'all':(id==='fPend'?'pend':'up'));
+        h.appendChild(b);
+      });
+    }
+  }
+  renderGrid();$('lib').classList.remove('hide');
+}
 function closeLib(){$('lib').classList.add('hide');syncUI();}
 function renderGrid(){
-  const up=photos.filter(p=>p.up).length, pend=photos.length-up;
-  $('libTitle').textContent='Ảnh: '+photos.length+'  ·  ✓Drive '+up+'  ·  chờ gửi '+pend;
+  updLibTitle();
+  const list=photos.map((p,i)=>({p:p,i:i})).filter(x=> libFilter==='all' || (libFilter==='pend' && !x.p.up) || (libFilter==='up' && x.p.up));
   $('grid').innerHTML='';
-  photos.forEach((p,i)=>{
-    const d=document.createElement('div');d.className='card';
-    const badge=p.up?'<span class="upok">✓ Drive</span>':'<span class="uppend">⏳ chưa gửi</span>';
+  list.forEach(x=>{
+    const p=x.p, i=x.i;
+    const d=document.createElement('div'); d.className='card'; d.dataset.id=p.id;
+    const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
     const chips=['TT','L','A','B','GAP','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
     d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
     $('grid').appendChild(d);
@@ -561,7 +643,7 @@ async function sendOne(url,p){
     const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:b64})});
     clearTimeout(to);
     const j=await r.json();
-    if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});queueLog(p);return true;}
+    if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});queueLog(p);try{updBadge(p);}catch(e){}return true;}
   }catch(e){}
   return false;
 }
@@ -571,15 +653,15 @@ async function sendDrive(){
   if(!todo.length){alert(photos.length?'Tất cả ảnh đã lên Drive ✓':'Chưa có ảnh.');return;}
   const btn=$('sendBtn'); btn.disabled=true;
   let done=0,ok=0,fail=0,i=0;
-  async function worker(){ while(i<todo.length){ const p=todo[i++]; const r=await sendOne(url,p); done++; r?ok++:fail++; btn.textContent='☁️ Đang gửi '+done+'/'+todo.length+'…'; renderGrid(); } }
+  async function worker(){ while(i<todo.length){ const p=todo[i++]; const r=await sendOne(url,p); done++; r?ok++:fail++; btn.textContent='☁️ Đang gửi '+done+'/'+todo.length+'…'; updBadge(p); } }
   await Promise.all(Array.from({length:Math.min(8,todo.length)},worker));   // gửi song song 8 ảnh
-  btn.disabled=false; btn.textContent='☁️ Gửi lên Drive';
+  btn.disabled=false; updLibTitle();
   toast(ok+' ảnh đã lên Drive'+(fail?(' · '+fail+' chưa gửi — bấm Gửi lại'):' ✓'));
 }
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v27-nut-xoay-gon';
+const APP_VER='v28-pro-muot';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
