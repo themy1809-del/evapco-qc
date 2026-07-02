@@ -207,7 +207,9 @@ setTimeout(updRotUI,1200);
 function grabUpright(){
   const v=$('vid'), vw=v.videoWidth, vh=v.videoHeight;
   if(!vw) return null;
-  const ang=effAng();
+  // neu GIAO DIEN da tu xoay ngang (iPhone khong bat khoa xoay) -> khung hinh da dung, KHONG xoay them
+  const uiLandscape = window.innerWidth > window.innerHeight;
+  const ang = uiLandscape ? 0 : effAng();
   const c=document.createElement('canvas');
   if(ang===0){ c.width=vw; c.height=vh; c.getContext('2d').drawImage(v,0,0); }
   else{
@@ -220,6 +222,11 @@ function grabUpright(){
 function start(){
   if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
   if(!USER()){alert('Nhập TÊN NGƯỜI CHỤP (làm việc nhóm cần biết ảnh của ai).');return;}
+  // iPhone: xin quyen cam bien NGAY trong cu cham (iOS bat buoc) — de nhan biet cam ngang
+  try{
+    if(window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission)
+      DeviceOrientationEvent.requestPermission().then(function(){updRotUI();}).catch(function(){});
+  }catch(e){}
   lockPortrait();
   ['iSec','iPair','iUser','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
@@ -504,21 +511,8 @@ async function sendDrive(){
 }
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
-// ===== NHAC XOAY DOC neu may khong cho khoa =====
-function chkRot(){
-  let ov=document.getElementById('rotOv');
-  const land=window.innerWidth>window.innerHeight*1.15;
-  if(land&&!ov){
-    ov=document.createElement('div');ov.id='rotOv';
-    ov.style.cssText='position:fixed;inset:0;background:#1F4E78;color:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;text-align:center;padding:20px';
-    ov.textContent='📱 Xoay DỌC điện thoại để chụp';
-    document.body.appendChild(ov);
-  }
-  if(!land&&ov)ov.remove();
-}
-window.addEventListener('resize',chkRot); setTimeout(chkRot,800);
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v21-xoay-taychinh';
+const APP_VER='v22-iphone-xoay';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
