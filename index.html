@@ -128,6 +128,7 @@ const TYPES=[
  {k:'GAP',name:'Gap',      kind:'freepos',per:3,def:'1-1'},
  {k:'MK', name:'Marking',  kind:'freepos',per:1,def:'1-1'},
  {k:'MAP',name:'Map',      kind:'free'},
+ {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
 ];
@@ -303,7 +304,7 @@ function syncUI(){
   const pt=$('ptTxt'); pt.style.display=fp?'':'none'; $('ptlbl').style.display=fp?'none':'';
   const lim=perLimit(),c=baseCount(curBase());
   const cnt=(lim!==Infinity)?'  '+c+'/'+lim:'';
-  if(fp){ if(document.activeElement!==pt) pt.value=pos[tIdx].txt||tp.def; pt.placeholder='vd '+tp.def; }
+  if(fp){ if(document.activeElement!==pt) pt.value=pos[tIdx].txt||tp.def; pt.placeholder='vd '+(tp.ph||tp.def); }
   else { $('ptlbl').innerHTML=curLabel()+'<span id="ptcnt">'+cnt+'</span>'; }
   $('cnt').textContent=photos.length;
 }
@@ -463,7 +464,7 @@ function renderGrid(){
   photos.forEach((p,i)=>{
     const d=document.createElement('div');d.className='card';
     const badge=p.up?'<span class="upok">✓ Drive</span>':'<span class="uppend">⏳ chưa gửi</span>';
-    const chips=['TT','L','A','B','GAP','MK','MAP','TH'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+    const chips=['TT','L','A','B','GAP','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
     d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
     $('grid').appendChild(d);
   });
@@ -578,7 +579,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v24-xem-anh-tieptuc';
+const APP_VER='v25-ten-part';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
