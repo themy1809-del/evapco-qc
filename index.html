@@ -45,7 +45,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #lib{position:fixed;inset:0;background:#0e1726;z-index:10;display:flex;flex-direction:column}
 #lib header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0)) 14px 10px;border-bottom:1px solid #213450}
 #lib header h2{font-size:17px;margin:0;flex:1}
-#grid{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+#grid{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;align-content:start}
 .card{background:#16233a;border-radius:12px;overflow:hidden}
 .card img{width:100%;height:34vw;max-height:230px;min-height:110px;object-fit:cover;display:block;background:#000}
 .card .r{display:flex;gap:6px;padding:6px}
@@ -676,7 +676,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v29-giaodien';
+const APP_VER='v30-list-cuon';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
@@ -685,7 +685,8 @@ setTimeout(async ()=>{
     const m=t.match(/APP_VER='([^']+)'/);
     if(m&&m[1]!==APP_VER){
       toast('Có bản mới → tự cập nhật…');
-      setTimeout(()=>location.reload(),1200);
+      // ep tai BAN MOI THAT (né cache iOS: reload thuong van ra ban cu)
+      setTimeout(()=>location.replace('index.html?capnhat='+Date.now()),1000);
     }
   }catch(e){}
 },2500);
