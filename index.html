@@ -164,9 +164,15 @@ function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
 
+async function lockPortrait(){
+  // khoa man hinh DOC tren Android (can cu chi nguoi dung -> goi trong start)
+  try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){}
+  try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('portrait'); }catch(e){}
+}
 function start(){
   if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
   if(!USER()){alert('Nhập TÊN NGƯỜI CHỤP (làm việc nhóm cần biết ảnh của ai).');return;}
+  lockPortrait();
   ['iSec','iPair','iUser','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
   buildTypes(); syncUI(); openCam();
@@ -449,6 +455,32 @@ async function sendDrive(){
 }
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
+// ===== NHAC XOAY DOC neu may khong cho khoa =====
+function chkRot(){
+  let ov=document.getElementById('rotOv');
+  const land=window.innerWidth>window.innerHeight*1.15;
+  if(land&&!ov){
+    ov=document.createElement('div');ov.id='rotOv';
+    ov.style.cssText='position:fixed;inset:0;background:#1F4E78;color:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;text-align:center;padding:20px';
+    ov.textContent='📱 Xoay DỌC điện thoại để chụp';
+    document.body.appendChild(ov);
+  }
+  if(!land&&ov)ov.remove();
+}
+window.addEventListener('resize',chkRot); setTimeout(chkRot,800);
+// ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
+const APP_VER='v19-portrait';
+setTimeout(async ()=>{
+  try{
+    if(!navigator.onLine) return;
+    const t=await fetch('index.html?nc='+Date.now(),{cache:'no-store'}).then(r=>r.text());
+    const m=t.match(/APP_VER='([^']+)'/);
+    if(m&&m[1]!==APP_VER){
+      toast('Có bản mới → tự cập nhật…');
+      setTimeout(()=>location.reload(),1200);
+    }
+  }catch(e){}
+},2500);
 loadSaved();   // khôi phục ảnh đã lưu khi mở lại app
 </script>
 </body></html>
