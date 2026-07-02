@@ -168,6 +168,38 @@ async function lockPortrait(){
   // khoa man hinh DOC tren Android (can cu chi nguoi dung -> goi trong start)
   try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){}
   try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('portrait'); }catch(e){}
+  try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
+}
+// ===== CHUP NGANG: UI van khoa doc, cam bien nhan biet may dang NGANG -> anh tu xoay DUNG CHIEU, giu khung ngang =====
+let devAng=0;
+function updRotBadge(){
+  let b=document.getElementById('rotBadge');
+  if(!b){
+    b=document.createElement('div'); b.id='rotBadge';
+    b.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(180,83,9,.92);color:#fff;padding:5px 14px;border-radius:14px;font-weight:800;font-size:13px;display:none';
+    document.body.appendChild(b);
+  }
+  if(devAng!==0){ b.textContent='📐 CHỤP NGANG — ảnh tự xoay đứng'; b.style.display='block'; }
+  else b.style.display='none';
+}
+window.addEventListener('deviceorientation',function(e){
+  if(e.gamma==null||e.beta==null) return;
+  const g=e.gamma, bt=e.beta; let a=devAng;
+  if(Math.abs(g)>50 && Math.abs(bt)<40) a=(g>0?90:-90);   // cam ngang (trai/phai)
+  else if(Math.abs(bt)>50) a=0;                            // cam doc
+  if(a!==devAng){ devAng=a; updRotBadge(); }
+});
+function grabUpright(){
+  const v=$('vid'), vw=v.videoWidth, vh=v.videoHeight;
+  if(!vw) return null;
+  const c=document.createElement('canvas');
+  if(devAng===0){ c.width=vw; c.height=vh; c.getContext('2d').drawImage(v,0,0); }
+  else{
+    c.width=vh; c.height=vw;
+    const x=c.getContext('2d');
+    x.translate(c.width/2,c.height/2); x.rotate(devAng*Math.PI/180); x.drawImage(v,-vw/2,-vh/2);
+  }
+  return c;
 }
 function start(){
   if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
@@ -310,14 +342,15 @@ async function tapFocus(e){
 }
 
 function snap(){
-  const v=$('vid'),vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;
+  const S=grabUpright(); if(!S)return;      // khung hinh DA XOAY DUNG CHIEU (cam ngang van ra anh dung)
+  const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
   if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
   const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
-  c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
+  c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
   const q=big?0.8:0.85;   // nhe hon de khong lag; diem A/L net hon chut
   const b64=c.toDataURL('image/jpeg',q).split(',')[1];
@@ -469,7 +502,7 @@ function chkRot(){
 }
 window.addEventListener('resize',chkRot); setTimeout(chkRot,800);
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v19-portrait';
+const APP_VER='v20-chupngang';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
