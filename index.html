@@ -165,6 +165,7 @@ function USER(){return $('iUser').value.trim();}
 
 function start(){
   if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
+  if(!USER()){alert('Nhập TÊN NGƯỜI CHỤP (làm việc nhóm cần biết ảnh của ai).');return;}
   ['iSec','iPair','iUser','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
   buildTypes(); syncUI(); openCam();
