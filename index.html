@@ -157,6 +157,22 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+// ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
+setTimeout(function(){
+  try{
+    if(!$('iSec').value||!$('iPair').value) return;
+    const sb=document.querySelector('#setup button[onclick*="start"]')||document.querySelector('#setup button');
+    if(!sb) return;
+    const b=document.createElement('button');
+    b.textContent='▶ TIẾP TỤC  Section '+$('iSec').value+' / PAIR '+$('iPair').value;
+    b.style.cssText='width:100%;margin:8px 0;padding:16px;border:0;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:800';
+    b.onclick=start;
+    sb.parentNode.insertBefore(b,sb);
+  }catch(e){}
+},300);
+function saveState(){
+  try{localStorage.setItem('ev_state',JSON.stringify({sec:SEC(),pair:PAIR(),tIdx:tIdx,pos:pos}));}catch(e){}
+}
 // may cu con luu link Drive cu -> tu chuyen sang link moi (v3, co action=pairs)
 if(($('iDrive').value||'').indexOf('AKfycbxIg3W')>=0){$('iDrive').value='';localStorage.removeItem('ev_iDrive');}
 if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec';
@@ -228,9 +244,18 @@ function start(){
       DeviceOrientationEvent.requestPermission().then(function(){updRotUI();}).catch(function(){});
   }catch(e){}
   lockPortrait();
+  try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}   // xin bo nho BEN (chong bi xoa)
   ['iSec','iPair','iUser','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
+  // khoi phuc dung CHO DANG CHUP DO (loai diem + so diem) cua Section/PAIR nay
+  try{
+    const st=JSON.parse(localStorage.getItem('ev_state')||'null');
+    if(st&&st.sec===SEC()&&st.pair===PAIR()){
+      if(typeof st.tIdx==='number') tIdx=st.tIdx;
+      if(Array.isArray(st.pos)&&st.pos.length===pos.length) pos=st.pos;
+    }
+  }catch(e){}
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
-  buildTypes(); syncUI(); openCam();
+  buildTypes(); syncUI(); openCam(); saveState();
 }
 function buildTypes(){
   $('types').innerHTML='';
@@ -253,16 +278,16 @@ function perLimit(){return curType().per||Infinity;}
 function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b).length;}
 function curName(){const b=curBase();return b+'.'+(baseCount(b)+1);}
 
-function setType(i){tIdx=i;syncUI();}
-function ptType(){pos[tIdx].txt=$('ptTxt').value;syncUI();}
+function setType(i){tIdx=i;syncUI();saveState();}
+function ptType(){pos[tIdx].txt=$('ptTxt').value;syncUI();saveState();}
 function ptMove(d){const t=curType(),p=pos[tIdx];
   if(t.kind==='num'||t.kind==='pair')p.num=Math.max(1,p.num+d);
   else if(t.kind==='list')p.mk=Math.max(0,Math.min(t.list.length-1,p.mk+d));
-  syncUI();}
+  syncUI();saveState();}
 function advance(){const t=curType(),p=pos[tIdx];
   if(t.kind==='num'||t.kind==='pair')p.num++;
   else if(t.kind==='list'){if(p.mk<t.list.length-1)p.mk++;}
-  syncUI();}
+  syncUI();saveState();}
 function nextLabel(){const t=curType(),p=pos[tIdx];
   if(t.kind==='num') return t.k+(p.num+1);
   if(t.kind==='pair')return (p.num+1)+'-'+(p.num+1);
@@ -390,6 +415,7 @@ function snap(){
   const b=curBase(),lim=perLimit();
   if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
   else{toast('✓ '+nm);syncUI();}
+  saveState();
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600);}
 
@@ -438,9 +464,38 @@ function renderGrid(){
     const d=document.createElement('div');d.className='card';
     const badge=p.up?'<span class="upok">✓ Drive</span>':'<span class="uppend">⏳ chưa gửi</span>';
     const chips=['TT','L','A','B','GAP','MK','MAP','TH'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
-    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
+    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
     $('grid').appendChild(d);
   });
+}
+// ===== XEM TO tung anh (kiem net truoc khi gui) =====
+async function viewPhoto(i){
+  const p=photos[i]; if(!p) return;
+  let b64=null;
+  try{ const full=await idbGet(p.id); b64=(full&&full.b64)||null; }catch(e){}
+  if(!b64) b64=p.tb||'';
+  let ov=document.getElementById('viewOv');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='viewOv';
+    ov.style.cssText='position:fixed;inset:0;background:#000;z-index:200;display:none;flex-direction:column';
+    ov.innerHTML='<div style="color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:800">'
+      +'<span id="vwName"></span><button onclick="closeView()" style="background:#334155;color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:800">Đóng ✕</button></div>'
+      +'<div style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center">'
+      +'<img id="vwImg" style="max-width:100%;height:auto"></div>'
+      +'<div style="padding:10px;display:flex;gap:10px">'
+      +'<button onclick="delFromView()" style="flex:1;background:#dc2626;color:#fff;border:0;border-radius:12px;padding:14px;font-weight:800">🗑 Xoá — chụp lại</button></div>';
+    document.body.appendChild(ov);
+  }
+  ov.dataset.idx=i;
+  document.getElementById('vwName').textContent=p.name+(p.up?'  ·  ✓ Drive':'  ·  ⏳ chưa gửi');
+  document.getElementById('vwImg').src='data:image/jpeg;base64,'+b64;
+  ov.style.display='flex';
+}
+function closeView(){const ov=document.getElementById('viewOv'); if(ov)ov.style.display='none';}
+function delFromView(){
+  const ov=document.getElementById('viewOv'); if(!ov)return;
+  const i=+ov.dataset.idx; closeView();
+  if(confirm('Xoá ảnh này để chụp lại?')) del(i);
 }
 function nextName(k){
   if(k==='A'){let pts={};photos.forEach(p=>{const m=/^A(\d+)\.(\d+)/.exec(p.name);if(m)pts[m[1]]=Math.max(pts[m[1]]||0,+m[2]);});let pn=1;while((pts[pn]||0)>=2)pn++;return 'A'+pn+'.'+((pts[pn]||0)+1);}
@@ -523,7 +578,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v23-gui-nhanh';
+const APP_VER='v24-xem-anh-tieptuc';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
