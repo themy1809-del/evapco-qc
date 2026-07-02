@@ -474,6 +474,17 @@ async function exportBundle(){
 }
 
 const TOKEN='EV-themy-2026';
+// nhat ky chup: GOM lai gui 1 lan (khong lam cham tung anh)
+let logQ=[], _logT=null;
+function flushLog(){
+  if(!logQ.length) return;
+  const rows=logQ.splice(0,logQ.length);
+  try{ fetch(DRV(),{method:'POST',body:JSON.stringify({token:TOKEN,log:rows})}).catch(()=>{}); }catch(e){}
+}
+function queueLog(p){
+  logQ.push({u:USER(),s:(p.sec||SEC()),p:(p.pair||PAIR()),n:p.name});
+  clearTimeout(_logT); _logT=setTimeout(flushLog,8000);
+}
 function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
 let _auto=0;
 async function autoSend(p){   // gui nen 1 anh ngay khi chup (toi da 4 cung luc)
@@ -494,7 +505,7 @@ async function sendOne(url,p){
     const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:b64})});
     clearTimeout(to);
     const j=await r.json();
-    if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});return true;}
+    if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});queueLog(p);return true;}
   }catch(e){}
   return false;
 }
@@ -512,7 +523,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v22-iphone-xoay';
+const APP_VER='v23-gui-nhanh';
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
