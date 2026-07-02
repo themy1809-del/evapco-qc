@@ -62,11 +62,26 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .uppend{position:absolute;top:6px;right:6px;background:#d97706;color:#fff;border-radius:10px;padding:2px 7px;font-size:12px;font-weight:700}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:#111e;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
 #toast.on{opacity:1}
+/* ===== v29 PRO look ===== */
+.hero{background:linear-gradient(135deg,#1F4E78,#2f6ba3);border-radius:18px;padding:20px 16px;margin-bottom:16px;color:#fff;position:relative;box-shadow:0 6px 18px #0006}
+.hero-t{font-size:26px;font-weight:900;letter-spacing:.5px}
+.hero-s{font-size:12px;opacity:.85;margin-top:3px}
+#verChip{position:absolute;top:12px;right:12px;background:#ffffff22;border:1px solid #ffffff44;color:#fff;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800}
+button{transition:transform .06s ease}
+button:active{transform:scale(.95)}
+.card{border:1px solid #24405f;box-shadow:0 2px 8px #0004}
+.card input{font-size:15px}
+#lib header{flex-wrap:wrap}
+#sendBtn{box-shadow:0 4px 14px #16a34a55}
+#shoot{box-shadow:0 0 0 6px #ffffff2e,0 6px 18px #0008}
 </style></head><body>
 
 <section id="setup">
-  <h1>EVAPCO QC — Chụp ảnh lắp thử</h1>
-  <p class="sub">Chọn Section/PAIR → chụp theo điểm → xuất gói ảnh đã đặt tên đúng.</p>
+  <div class="hero">
+    <div class="hero-t">EVAPCO QC</div>
+    <div class="hero-s">Trial-Assembly Photo System · DAI DUNG</div>
+    <span id="verChip">v?</span>
+  </div>
   <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
   <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
   <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
@@ -661,7 +676,8 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v28-pro-muot';
+const APP_VER='v29-giaodien';
+try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
     if(!navigator.onLine) return;
