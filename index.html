@@ -110,6 +110,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
     <h2 id="libTitle">Ảnh</h2>
   </header>
   <div id="grid"></div>
+  <button id="chkBtn" onclick="checkMissing()" style="margin:0 14px 8px;padding:12px;border:0;border-radius:14px;background:#b45309;color:#fff;font-size:15px;font-weight:800">📋 Kiểm THIẾU điểm</button>
   <button id="sendBtn" onclick="sendDrive()">☁️ Gửi lên Drive</button>
   <button id="expBtn" onclick="exportBundle()">📦 Lưu file JSON (dự phòng)</button>
   <button id="clrBtn" onclick="clearUploaded()">🗑 Dọn ảnh đã gửi Drive</button>
@@ -330,6 +331,41 @@ function snap(){
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600);}
 
+function checkMissing(){
+  // Phan tich ten anh da chup -> bao thieu ngay tai hien truong
+  const bases={};
+  photos.forEach(p=>{const b=p.name.split('.')[0];bases[b]=(bases[b]||0)+1;});
+  const nums=(pre,re)=>{const s=new Set();Object.keys(bases).forEach(b=>{const m=re.exec(b);if(m)s.add(+m[1]);});return s;};
+  const L=[];
+  // A: 2 anh/diem, so thu tu lien tuc
+  const aN=nums('A',/^A(\d+)$/);
+  if(aN.size){const mx=Math.max(...aN);const miss=[],thieu2=[];
+    for(let i=1;i<=mx;i++){if(!aN.has(i))miss.push('A'+i);else if((bases['A'+i]||0)<2)thieu2.push('A'+i);}
+    L.push('Dim A: '+aN.size+' điểm (max A'+mx+')'+(miss.length?' · THIẾU: '+miss.join(', '):' · đủ số')+(thieu2.length?' · mới 1/2 ảnh: '+thieu2.join(', '):''));
+  }else L.push('Dim A: CHƯA CHỤP');
+  // B
+  const bN=nums('B',/^B(\d+)$/);
+  if(bN.size){const mx=Math.max(...bN);const miss=[];for(let i=1;i<=mx;i++)if(!bN.has(i))miss.push('B'+i);
+    L.push('Điểm B: '+bN.size+' điểm'+(miss.length?' · THIẾU: '+miss.join(', '):''));}
+  // L: chuan 8 diem
+  const lN=nums('L',/^L(\d+)$/);
+  {const miss=[];for(let i=1;i<=8;i++)if(!lN.has(i))miss.push('L'+i);
+   L.push('Level: '+lN.size+'/8'+(miss.length?' · THIẾU: '+miss.join(', '):' ✓'));}
+  // GAP lien tuc
+  const gN=nums('GAP',/^GAP(\d+)-\d+$/);
+  if(gN.size){const mx=Math.max(...gN);const miss=[];for(let i=1;i<=mx;i++)if(!gN.has(i))miss.push('GAP'+i+'-'+i);
+    L.push('Gap: '+gN.size+' điểm'+(miss.length?' · THIẾU: '+miss.join(', '):''));}
+  else L.push('Gap: CHƯA CHỤP');
+  // MK chuan 11 vi tri
+  const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
+  const mkMiss=MKS.filter(k=>!bases['MK'+k]);
+  L.push('Marking: '+(MKS.length-mkMiss.length)+'/11'+(mkMiss.length?' · THIẾU: '+mkMiss.join(', '):' ✓'));
+  // TT / MAP / TH
+  L.push('Tổng thể: '+(Object.keys(bases).some(b=>b.startsWith('TT'))?'✓':'CHƯA CHỤP'));
+  L.push('Map: '+(Object.keys(bases).some(b=>b.startsWith('MAP'))?'✓':'CHƯA CHỤP'));
+  L.push('Độ dày: '+(Object.keys(bases).some(b=>b.startsWith('TH'))?'✓':'(không bắt buộc)'));
+  alert('📋 KIỂM THIẾU — Section '+SEC()+' / PAIR '+PAIR()+'\n\n'+L.join('\n')+'\n\n(Lưu ý: app chỉ đếm theo tên ảnh; section không có mục nào thì bỏ qua dòng đó)');
+}
 function openLib(){renderGrid();$('lib').classList.remove('hide');}
 function closeLib(){$('lib').classList.add('hide');syncUI();}
 function renderGrid(){
