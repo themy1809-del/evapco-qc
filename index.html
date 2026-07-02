@@ -138,8 +138,21 @@ function idbOpen(){return new Promise(r=>{try{const q=indexedDB.open('evapco_db'
 function idbPut(p){try{DB&&DB.transaction('photos','readwrite').objectStore('photos').put(p);}catch(e){}}
 function idbDel(id){try{DB&&DB.transaction('photos','readwrite').objectStore('photos').delete(id);}catch(e){}}
 function idbAll(){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}catch(e){res([]);}});}
+function idbGet(id){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});}
+async function idbPatch(id,f){const r=await idbGet(id);if(r){Object.assign(r,f);idbPut(r);}}
+function makeThumb(b64){return new Promise(res=>{const im=new Image();im.onload=()=>{try{const s=240/Math.max(im.width,im.height),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.6).split(',')[1]);}catch(e){res(null);}};im.onerror=()=>res(null);im.src='data:image/jpeg;base64,'+b64;});}
 function updateCnt(){const e=$('cnt');if(e)e.textContent=photos.length;}
-async function loadSaved(){await idbOpen();const s=await idbAll();if(s&&s.length){s.sort((a,b)=>(b.t||0)-(a.t||0));photos=s;}updateCnt();}
+// CHONG LAG: RAM chi giu thumbnail nho (tb); anh goc (b64) nam trong IndexedDB, doc khi can gui
+async function loadSaved(){
+  await idbOpen();const s=await idbAll();
+  if(s&&s.length){
+    s.sort((a,b)=>(b.t||0)-(a.t||0));
+    photos=s.map(r=>{const m={};for(const k in r)if(k!=='b64')m[k]=r[k];return m;});
+    updateCnt();
+    for(const r of s){ if(!r.tb&&r.b64){ const t=await makeThumb(r.b64); if(t){ r.tb=t; idbPut(r); const m=photos.find(p=>p.id===r.id); if(m)m.tb=t; } } }
+  }
+  updateCnt();
+}
 
 ['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
 if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbxIg3WQhc4ytPXlZOom3tCfZkUgPcsBFmuRjDF5PYqTSbS2zvvPkSzACMRxuATlqEqK/exec';
@@ -296,8 +309,14 @@ function snap(){
   c.getContext('2d').drawImage(v,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
   const q=big?0.8:0.85;   // nhe hon de khong lag; diem A/L net hon chut
-  const ph={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),t:Date.now(),sec:SEC(),pair:PAIR(),name:nm,b64:c.toDataURL('image/jpeg',q).split(',')[1],gen:big};
-  photos.unshift(ph); idbPut(ph);   // lưu ngay vào máy — không lo mất
+  const b64=c.toDataURL('image/jpeg',q).split(',')[1];
+  const ts=240/Math.max(cw,ch),tc2=document.createElement('canvas');tc2.width=Math.max(1,Math.round(cw*ts));tc2.height=Math.max(1,Math.round(ch*ts));
+  tc2.getContext('2d').drawImage(c,0,0,tc2.width,tc2.height);
+  const tb=tc2.toDataURL('image/jpeg',0.6).split(',')[1];
+  const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
+  idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
+  const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
+  photos.unshift(ph);
   autoSend(ph);   // gửi NGẦM ngay khi chụp -> cuối buổi gần như đã lên Drive hết
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
@@ -317,7 +336,7 @@ function renderGrid(){
     const d=document.createElement('div');d.className='card';
     const badge=p.up?'<span class="upok">✓ Drive</span>':'<span class="uppend">⏳ chưa gửi</span>';
     const chips=['TT','L','A','GAP','MK','MAP','TH'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
-    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+p.b64+'">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
+    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
     $('grid').appendChild(d);
   });
 }
@@ -328,8 +347,8 @@ function nextName(k){
   if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=photos.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
   const c=photos.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
 }
-function quickName(i,k){photos[i].name=nextName(k);idbPut(photos[i]);renderGrid();}
-function rename(i,v){photos[i].name=(v.trim()||photos[i].name);idbPut(photos[i]);}
+function quickName(i,k){photos[i].name=nextName(k);idbPatch(photos[i].id,{name:photos[i].name});renderGrid();}
+function rename(i,v){photos[i].name=(v.trim()||photos[i].name);idbPatch(photos[i].id,{name:photos[i].name});}
 function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
 function clearUploaded(){
   const up=photos.filter(p=>p.up);
@@ -339,9 +358,11 @@ function clearUploaded(){
   renderGrid();updateCnt();
 }
 
-function exportBundle(){
+async function exportBundle(){
   if(!photos.length){alert('Chưa có ảnh.');return;}
-  const data={section:SEC(),pair:PAIR(),user:USER(),at:new Date().toISOString(),photos:photos.map(p=>({name:p.name,b64:p.b64}))};
+  const list=[];
+  for(const p of photos){const r=await idbGet(p.id);list.push({name:p.name,b64:(r&&r.b64)||p.b64||''});}
+  const data={section:SEC(),pair:PAIR(),user:USER(),at:new Date().toISOString(),photos:list};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='EVAPCO_S'+SEC()+'_PAIR'+PAIR()+'_'+photos.length+'anh.json';
@@ -363,11 +384,14 @@ async function autoSend(p){   // gui nen 1 anh ngay khi chup (toi da 4 cung luc)
 }
 async function sendOne(url,p){
   try{
+    let b64=p.b64;
+    if(!b64){const f=await idbGet(p.id);b64=f&&f.b64;}   // anh goc lay tu IndexedDB (RAM chi co thumbnail)
+    if(!b64) return false;
     const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),30000);
-    const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:p.b64})});
+    const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:b64})});
     clearTimeout(to);
     const j=await r.json();
-    if(j&&j.ok){p.up=true;idbPut(p);return true;}
+    if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});return true;}
   }catch(e){}
   return false;
 }
