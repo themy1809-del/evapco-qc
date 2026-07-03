@@ -85,6 +85,7 @@ button:active{transform:scale(.95)}
   <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
   <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
   <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
+  <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A — gồm thả dọi) · Gap · Marking · Map · Độ dày.<br>
@@ -155,24 +156,27 @@ let DB=null;
 function idbOpen(){return new Promise(r=>{try{const q=indexedDB.open('evapco_db',1);q.onupgradeneeded=e=>e.target.result.createObjectStore('photos',{keyPath:'id'});q.onsuccess=e=>{DB=e.target.result;r();};q.onerror=()=>r();}catch(e){r();}});}
 function idbPut(p){try{DB&&DB.transaction('photos','readwrite').objectStore('photos').put(p);}catch(e){}}
 function idbDel(id){try{DB&&DB.transaction('photos','readwrite').objectStore('photos').delete(id);}catch(e){}}
-function idbAll(){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}catch(e){res([]);}});}
-function idbGet(id){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});}
+function idbAll(){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}catch(e){res([]);}})}
+// v32: doc bang CON TRO — chi giu thong tin nhe, KHONG keo toan bo anh goc vao RAM (het do luc mo app)
+function idbMeta(){return new Promise(res=>{try{const out=[];const q=DB.transaction('photos').objectStore('photos').openCursor();q.onsuccess=e=>{const c=e.target.result;if(!c){res(out);return;}const r=c.value,m={};for(const k in r)if(k!=='b64')m[k]=r[k];if(!r.tb)m._noTb=1;out.push(m);c.continue();};q.onerror=()=>res(out);}catch(e){res([]);}})}
+function idbGet(id){return new Promise(res=>{try{const q=DB.transaction('photos').objectStore('photos').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}})}
 async function idbPatch(id,f){const r=await idbGet(id);if(r){Object.assign(r,f);idbPut(r);}}
 function makeThumb(b64){return new Promise(res=>{const im=new Image();im.onload=()=>{try{const s=240/Math.max(im.width,im.height),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.6).split(',')[1]);}catch(e){res(null);}};im.onerror=()=>res(null);im.src='data:image/jpeg;base64,'+b64;});}
 function updateCnt(){const e=$('cnt');if(e)e.textContent=photos.length;}
 // CHONG LAG: RAM chi giu thumbnail nho (tb); anh goc (b64) nam trong IndexedDB, doc khi can gui
 async function loadSaved(){
-  await idbOpen();const s=await idbAll();
-  if(s&&s.length){
-    s.sort((a,b)=>(b.t||0)-(a.t||0));
-    photos=s.map(r=>{const m={};for(const k in r)if(k!=='b64')m[k]=r[k];return m;});
-    updateCnt();
-    for(const r of s){ if(!r.tb&&r.b64){ const t=await makeThumb(r.b64); if(t){ r.tb=t; idbPut(r); const m=photos.find(p=>p.id===r.id); if(m)m.tb=t; } } }
-  }
+  await idbOpen();const s=await idbMeta();
+  if(s&&s.length){s.sort((a,b)=>(b.t||0)-(a.t||0));photos=s;}
   updateCnt();
+  // anh doi cu chua co thumbnail -> lam DAN tung tam, khong chan giao dien
+  const need=photos.filter(p=>p._noTb).map(p=>p.id);
+  for(const id of need){
+    const r=await idbGet(id);
+    if(r&&r.b64&&!r.tb){const t=await makeThumb(r.b64);if(t){r.tb=t;idbPut(r);const m=photos.find(p=>p.id===id);if(m){m.tb=t;delete m._noTb;}}}
+  }
 }
 
-['iSec','iPair','iUser','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
   try{
@@ -195,6 +199,7 @@ if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfy
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
+function USERX(){const w=$('iWk').value.trim();return USER()+(w?' ('+w+')':'');}
 
 async function lockPortrait(){
   // khoa man hinh DOC tren Android (can cu chi nguoi dung -> goi trong start)
@@ -261,7 +266,7 @@ function start(){
   }catch(e){}
   lockPortrait();
   try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}   // xin bo nho BEN (chong bi xoa)
-  ['iSec','iPair','iUser','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
+  ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
   // khoi phuc dung CHO DANG CHUP DO (loai diem + so diem) cua Section/PAIR nay
   try{
     const st=JSON.parse(localStorage.getItem('ev_state')||'null');
@@ -270,6 +275,16 @@ function start(){
       if(Array.isArray(st.pos)&&st.pos.length===pos.length) pos=st.pos;
     }
   }catch(e){}
+  // v32: may om qua nhieu anh DA GUI -> hoi don bot cho nhe may (het lag)
+  setTimeout(function(){
+    try{
+      const up=photos.filter(p=>p.up);
+      if(up.length>=80 && confirm('Máy đang giữ '+up.length+' ảnh ĐÃ gửi Drive.\nDọn bớt cho máy nhẹ, hết lag? (ảnh trên Drive vẫn còn đủ)')){
+        up.forEach(p=>idbDel(p.id)); photos=photos.filter(p=>!p.up); updateCnt();
+        toast('Đã dọn '+up.length+' ảnh — máy nhẹ hơn nhiều');
+      }
+    }catch(e){}
+  },1200);
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
   buildTypes(); syncUI(); openCam(); saveState();
 }
@@ -552,19 +567,35 @@ function openLib(){
   }
   renderGrid();$('lib').classList.remove('hide');
 }
-function closeLib(){$('lib').classList.add('hide');syncUI();}
+function closeLib(){
+  // v32: DON SACH thu vien khoi trang khi quay lai camera -> giai phong RAM, het lag
+  _rgSeq++;                      // huy dot ve dang cho (neu co)
+  $('grid').innerHTML='';
+  $('lib').classList.add('hide');syncUI();
+}
+// v32: ve thu vien theo TUNG DOT 40 the (nhieu tram anh van muot) + anh lazy
+let _rgSeq=0;
+function cardHTML(p,i){
+  const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
+  const chips=['TT','L','A','B','GAP','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
+}
 function renderGrid(){
   updLibTitle();
   const list=photos.map((p,i)=>({p:p,i:i})).filter(x=> libFilter==='all' || (libFilter==='pend' && !x.p.up) || (libFilter==='up' && x.p.up));
-  $('grid').innerHTML='';
-  list.forEach(x=>{
-    const p=x.p, i=x.i;
-    const d=document.createElement('div'); d.className='card'; d.dataset.id=p.id;
-    const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-    const chips=['TT','L','A','B','GAP','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
-    d.innerHTML='<div style="position:relative"><img src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
-    $('grid').appendChild(d);
-  });
+  const g=$('grid'); g.innerHTML='';
+  const seq=++_rgSeq; let idx=0; const CH=40;
+  (function chunk(){
+    if(seq!==_rgSeq) return;               // co lan ve moi hon -> huy lan cu
+    const fr=document.createDocumentFragment();
+    for(let n=0;n<CH&&idx<list.length;n++,idx++){
+      const x=list[idx], d=document.createElement('div');
+      d.className='card'; d.dataset.id=x.p.id; d.innerHTML=cardHTML(x.p,x.i);
+      fr.appendChild(d);
+    }
+    g.appendChild(fr);
+    if(idx<list.length) setTimeout(chunk,0);   // nha quyen cho giao dien tho
+  })();
 }
 // ===== XEM TO tung anh (kiem net truoc khi gui) =====
 async function viewPhoto(i){
@@ -589,7 +620,11 @@ async function viewPhoto(i){
   document.getElementById('vwImg').src='data:image/jpeg;base64,'+b64;
   ov.style.display='flex';
 }
-function closeView(){const ov=document.getElementById('viewOv'); if(ov)ov.style.display='none';}
+function closeView(){
+  const ov=document.getElementById('viewOv'); if(ov)ov.style.display='none';
+  // v32: xa anh FULL khoi bo nho ngay khi dong (anh goc rat nang)
+  const im=document.getElementById('vwImg'); if(im)im.src='';
+}
 function delFromView(){
   const ov=document.getElementById('viewOv'); if(!ov)return;
   const i=+ov.dataset.idx; closeView();
@@ -618,7 +653,7 @@ async function exportBundle(){
   if(!photos.length){alert('Chưa có ảnh.');return;}
   const list=[];
   for(const p of photos){const r=await idbGet(p.id);list.push({name:p.name,b64:(r&&r.b64)||p.b64||''});}
-  const data={section:SEC(),pair:PAIR(),user:USER(),at:new Date().toISOString(),photos:list};
+  const data={section:SEC(),pair:PAIR(),user:USERX(),at:new Date().toISOString(),photos:list};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='EVAPCO_S'+SEC()+'_PAIR'+PAIR()+'_'+photos.length+'anh.json';
@@ -635,15 +670,15 @@ function flushLog(){
   try{ fetch(DRV(),{method:'POST',body:JSON.stringify({token:TOKEN,log:rows})}).catch(()=>{}); }catch(e){}
 }
 function queueLog(p){
-  logQ.push({u:USER(),s:(p.sec||SEC()),p:(p.pair||PAIR()),n:p.name});
+  logQ.push({u:USERX(),s:(p.sec||SEC()),p:(p.pair||PAIR()),n:p.name});
   clearTimeout(_logT); _logT=setTimeout(flushLog,8000);
 }
 function DRV(){return ($('iDrive').value.trim()||'https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec');}
 let _auto=0;
-async function autoSend(p){   // gui nen 1 anh ngay khi chup (toi da 4 cung luc)
+async function autoSend(p){   // gui nen 1 anh ngay khi chup (v32: toi da 2 cung luc -> may yeu khong khung)
   if(p.up) return;
   var url=DRV(); if(!url || !navigator.onLine) return;
-  if(_auto>=4) return;        // de danh bang thong cho viec chup tiep
+  if(_auto>=2) return;        // de danh suc may + bang thong cho viec chup tiep
   _auto++;
   try{ await sendOne(url,p); }catch(_){}
   _auto--;
@@ -655,7 +690,7 @@ async function sendOne(url,p){
     if(!b64){const f=await idbGet(p.id);b64=f&&f.b64;}   // anh goc lay tu IndexedDB (RAM chi co thumbnail)
     if(!b64) return false;
     const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),30000);
-    const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USER(),name:p.name,b64:b64})});
+    const r=await fetch(url,{method:'POST',signal:ctrl.signal,body:JSON.stringify({token:TOKEN,section:(p.sec||SEC()),pair:(p.pair||PAIR()),user:USERX(),name:p.name,b64:b64})});
     clearTimeout(to);
     const j=await r.json();
     if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});queueLog(p);try{updBadge(p);}catch(e){}return true;}
@@ -669,14 +704,14 @@ async function sendDrive(){
   const btn=$('sendBtn'); btn.disabled=true;
   let done=0,ok=0,fail=0,i=0;
   async function worker(){ while(i<todo.length){ const p=todo[i++]; const r=await sendOne(url,p); done++; r?ok++:fail++; btn.textContent='☁️ Đang gửi '+done+'/'+todo.length+'…'; updBadge(p); } }
-  await Promise.all(Array.from({length:Math.min(8,todo.length)},worker));   // gửi song song 8 ảnh
+  await Promise.all(Array.from({length:Math.min(6,todo.length)},worker));   // gửi song song 6 ảnh
   btn.disabled=false; updLibTitle();
   toast(ok+' ảnh đã lên Drive'+(fail?(' · '+fail+' chưa gửi — bấm Gửi lại'):' ✓'));
 }
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v31-list-chuan';
+const APP_VER='v32-nhanh-gon';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
