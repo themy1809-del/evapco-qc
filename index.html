@@ -471,7 +471,7 @@ async function snap(){
   const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
-  if(!big){const ar=4/3;if(vw/vh>ar){sw=vh*ar;sx=(vw-sw)/2;}else{sh=vw/ar;sy=(vh-sh)/2;}}
+  /*full-frame: khong cat 4:3, thu ca khung vua*/
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
   const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
@@ -711,7 +711,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v32-nhanh-gon';
+const APP_VER='v33-fullframe';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
