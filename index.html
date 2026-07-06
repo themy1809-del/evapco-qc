@@ -142,7 +142,8 @@ const TYPES=[
  {k:'A',  name:'Dim',      kind:'num', per:2},
  {k:'B',  name:'Điểm B',   kind:'num'},
  {k:'GAP',name:'Gap',      kind:'freepos',per:3,def:'1-1'},
- {k:'MK', name:'Marking',  kind:'freepos',per:1,def:'1-1'},
+ {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
+ {k:'MK', name:'MK gõ', kind:'freepos',per:1,def:'0T'},
  {k:'MAP',name:'Map',      kind:'free'},
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
@@ -711,7 +712,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v33-fullframe';
+const APP_VER='v34-mk-preset';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
