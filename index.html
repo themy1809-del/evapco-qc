@@ -212,8 +212,9 @@ async function lockPortrait(){
 let devAng=0, rotMode='auto';   // rotMode: 'auto' | 0 | 90 | -90
 function effAng(){ return rotMode==='auto' ? devAng : rotMode; }
 function rotLabel(){
-  if(rotMode==='auto') return devAng===0 ? '📐 Tự động · DỌC' : '📐 Tự động · NGANG';
+  if(rotMode==='auto') return devAng===0 ? '📐 Tự động · DỌC' : (devAng===180?'📐 Tự động · NGƯỢC':'📐 Tự động · NGANG');
   if(rotMode===0)  return '📐 DỌC (đã khoá)';
+  if(rotMode===180) return '📐 XOAY 180°';
   return rotMode===90 ? '📐 NGANG A' : '📐 NGANG B';
 }
 function updRotUI(){
@@ -222,10 +223,10 @@ function updRotUI(){
     b=document.createElement('button'); b.id='rotBtn';
     b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 150px);right:10px;z-index:60;background:rgba(31,78,120,.88);color:#fff;border:0;padding:5px 10px;border-radius:12px;font-weight:800;font-size:11px;max-width:130px';
     b.onclick=function(){
-      rotMode = rotMode==='auto' ? 90 : (rotMode===90 ? -90 : (rotMode===-90 ? 0 : 'auto'));
+      rotMode = rotMode==='auto' ? 90 : (rotMode===90 ? -90 : (rotMode===-90 ? 180 : (rotMode===180 ? 0 : 'auto')));
       updRotUI();
       toast(rotMode==='auto' ? 'Xoay: TỰ ĐỘNG theo cảm biến' :
-            (rotMode===0 ? 'Khoá DỌC' : 'Cầm NGANG — chụp thử 1 tấm, ngược thì bấm tiếp'));
+            (rotMode===0 ? 'Khoá DỌC' : (rotMode===180 ? 'XOAY 180° — dùng khi ảnh bị lộn ngược' : 'Cầm NGANG — chụp thử 1 tấm, ngược thì bấm tiếp')));
     };
     document.body.appendChild(b);
   }
@@ -234,9 +235,17 @@ function updRotUI(){
 }
 function _onDevOri(e){
   if(e.gamma==null||e.beta==null) return;
-  const g=e.gamma, bt=e.beta; let a=devAng;
-  if(Math.abs(g)>50 && Math.abs(bt)<40) a=(g>0?90:-90);   // cam ngang (trai/phai)
-  else if(Math.abs(bt)>50) a=0;                            // cam doc
+  // v37: tinh huong TRONG LUC chieu len man hinh -> nhan du 4 huong DOC/NGANG A/NGANG B/NGUOC 180
+  const rb=e.beta*Math.PI/180, rg=e.gamma*Math.PI/180;
+  const gx=Math.sin(rg)*Math.cos(rb);   // nghieng trai/phai
+  const gy=Math.sin(rb);                // nghieng tren/duoi
+  if(Math.hypot(gx,gy)<0.35) return;    // may gan NAM NGANG (chup chui xuong) -> GIU goc cu, khong doan bay
+  const deg=Math.atan2(gx,gy)*180/Math.PI;
+  let a;
+  if(deg>-45&&deg<=45) a=0;
+  else if(deg>45&&deg<=135) a=90;
+  else if(deg<=-45&&deg>-135) a=-90;
+  else a=180;
   if(a!==devAng){ devAng=a; updRotUI(); }
 }
 window.addEventListener('deviceorientation',_onDevOri);
@@ -250,6 +259,11 @@ function grabUpright(){
   const ang = uiLandscape ? 0 : effAng();
   const c=document.createElement('canvas');
   if(ang===0){ c.width=vw; c.height=vh; c.getContext('2d').drawImage(v,0,0); }
+  else if(ang===180){
+    c.width=vw; c.height=vh;
+    const x=c.getContext('2d');
+    x.translate(c.width/2,c.height/2); x.rotate(Math.PI); x.drawImage(v,-vw/2,-vh/2);
+  }
   else{
     c.width=vh; c.height=vw;
     const x=c.getContext('2d');
@@ -738,7 +752,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v36-camera-on';
+const APP_VER='v37-xoay-chuan';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
