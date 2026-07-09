@@ -535,12 +535,18 @@ function checkMissing(){
   alert('📋 KIỂM THIẾU — Section '+SEC()+' / PAIR '+PAIR()+'\n\n'+L.join('\n')+'\n\n(Lưu ý: app chỉ đếm theo tên ảnh; section không có mục nào thì bỏ qua dòng đó)');
 }
 let libFilter='all';
+let libScope='pair';   // v35: mac dinh CHI hien anh PAIR dang lam -> thu vien nhe, het treo
+function inScope(p){return libScope==='all'||(String(p.sec||'')===SEC()&&String(p.pair||'')===PAIR());}
 function setFilter(f){libFilter=f;renderGrid();}
 function updLibTitle(){
-  const up=photos.filter(p=>p.up).length, pend=photos.length-up;
-  const t=$('libTitle'); if(t)t.textContent='Ảnh: '+photos.length+' · ✓'+up+' · ⏳'+pend;
+  const sc=photos.filter(inScope);
+  const up=sc.filter(p=>p.up).length, pend=sc.length-up;
+  const pendAll=photos.filter(p=>!p.up).length;
+  const t=$('libTitle'); if(t)t.textContent=(libScope==='pair'?'PAIR này: ':'Tất cả: ')+sc.length+' · ✓'+up+' · ⏳'+pend;
   const sb=$('sendBtn');
-  if(sb&&!sb.disabled) sb.textContent = pend ? ('☁️ Gửi '+pend+' ảnh lên Drive') : '☁️ Đã gửi hết ✓';
+  if(sb&&!sb.disabled) sb.textContent = pendAll ? ('☁️ Gửi '+pendAll+' ảnh lên Drive') : '☁️ Đã gửi hết ✓';
+  const fs=document.getElementById('fScope');
+  if(fs){fs.textContent=(libScope==='pair'?'📁 PAIR này':'📁 Tất cả');fs.style.background=(libScope==='pair')?'#16a34a':'#6b7280';}
   [['fAll','all'],['fPend','pend'],['fUp','up']].forEach(([id,m])=>{
     const b=document.getElementById(id);
     if(b)b.style.background=(libFilter===m)?'#1a73e8':'#ffffff22';
@@ -555,9 +561,14 @@ function updBadge(p){
   updLibTitle();
 }
 function openLib(){
+  try{if(camTrack)camTrack.enabled=false;}catch(e){}   // v35: dung camera ngam khi xem thu vien -> nhe may
   if(!document.getElementById('fAll')){
     const h=document.querySelector('#lib header');
     if(h){
+      const fs=document.createElement('button'); fs.id='fScope';
+      fs.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#16a34a;flex:0 0 auto';
+      fs.onclick=()=>{libScope=(libScope==='pair'?'all':'pair');renderGrid();};
+      h.appendChild(fs);
       [['fAll','Tất cả'],['fPend','⏳ Chưa gửi'],['fUp','✓ Drive']].forEach(([id,lb])=>{
         const b=document.createElement('button'); b.id=id; b.textContent=lb;
         b.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#ffffff22;flex:0 0 auto';
@@ -569,7 +580,7 @@ function openLib(){
   renderGrid();$('lib').classList.remove('hide');
 }
 function closeLib(){
-  // v32: DON SACH thu vien khoi trang khi quay lai camera -> giai phong RAM, het lag
+  try{if(camTrack)camTrack.enabled=true;}catch(e){}   // v35: bat lai camera
   _rgSeq++;                      // huy dot ve dang cho (neu co)
   $('grid').innerHTML='';
   $('lib').classList.add('hide');syncUI();
@@ -583,9 +594,9 @@ function cardHTML(p,i){
 }
 function renderGrid(){
   updLibTitle();
-  const list=photos.map((p,i)=>({p:p,i:i})).filter(x=> libFilter==='all' || (libFilter==='pend' && !x.p.up) || (libFilter==='up' && x.p.up));
+  const list=photos.map((p,i)=>({p:p,i:i})).filter(x=> inScope(x.p) && (libFilter==='all' || (libFilter==='pend' && !x.p.up) || (libFilter==='up' && x.p.up)));
   const g=$('grid'); g.innerHTML='';
-  const seq=++_rgSeq; let idx=0; const CH=40;
+  const seq=++_rgSeq; let idx=0; const CH=16;
   (function chunk(){
     if(seq!==_rgSeq) return;               // co lan ve moi hon -> huy lan cu
     const fr=document.createDocumentFragment();
@@ -595,10 +606,11 @@ function renderGrid(){
       fr.appendChild(d);
     }
     g.appendChild(fr);
-    if(idx<list.length) setTimeout(chunk,0);   // nha quyen cho giao dien tho
+    if(idx<list.length) setTimeout(chunk,16);   // nha quyen cho giao dien tho
   })();
 }
 // ===== XEM TO tung anh (kiem net truoc khi gui) =====
+let _vwUrl=null;
 async function viewPhoto(i){
   const p=photos[i]; if(!p) return;
   let b64=null;
@@ -618,13 +630,19 @@ async function viewPhoto(i){
   }
   ov.dataset.idx=i;
   document.getElementById('vwName').textContent=p.name+(p.up?'  ·  ✓ Drive':'  ·  ⏳ chưa gửi');
-  document.getElementById('vwImg').src='data:image/jpeg;base64,'+b64;
+  try{
+    const bin=atob(b64),u8=new Uint8Array(bin.length);
+    for(let k=0;k<bin.length;k++)u8[k]=bin.charCodeAt(k);
+    if(_vwUrl){try{URL.revokeObjectURL(_vwUrl);}catch(e){}}
+    _vwUrl=URL.createObjectURL(new Blob([u8],{type:'image/jpeg'}));
+    document.getElementById('vwImg').src=_vwUrl;
+  }catch(e){document.getElementById('vwImg').src='data:image/jpeg;base64,'+b64;}
   ov.style.display='flex';
 }
 function closeView(){
   const ov=document.getElementById('viewOv'); if(ov)ov.style.display='none';
-  // v32: xa anh FULL khoi bo nho ngay khi dong (anh goc rat nang)
   const im=document.getElementById('vwImg'); if(im)im.src='';
+  if(_vwUrl){try{URL.revokeObjectURL(_vwUrl);}catch(e){}_vwUrl=null;}
 }
 function delFromView(){
   const ov=document.getElementById('viewOv'); if(!ov)return;
@@ -712,7 +730,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v34-mk-preset';
+const APP_VER='v35-thuvien-nhanh';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
