@@ -561,7 +561,7 @@ function updBadge(p){
   updLibTitle();
 }
 function openLib(){
-  try{if(camTrack)camTrack.enabled=false;}catch(e){}   // v35: dung camera ngam khi xem thu vien -> nhe may
+  try{$('vid').pause();}catch(e){}   // v36: chi TAM DUNG khung hinh (khong tat track -> het man den)
   if(!document.getElementById('fAll')){
     const h=document.querySelector('#lib header');
     if(h){
@@ -580,7 +580,15 @@ function openLib(){
   renderGrid();$('lib').classList.remove('hide');
 }
 function closeLib(){
-  try{if(camTrack)camTrack.enabled=true;}catch(e){}   // v35: bat lai camera
+  // v36: bat lai khung hinh; neu camera chet (man den) thi TU MO LAI
+  try{if(camTrack&&camTrack.enabled===false)camTrack.enabled=true;}catch(e){}
+  try{var _v=$('vid');if(_v&&_v.play)_v.play().catch(function(){});}catch(e){}
+  setTimeout(function(){
+    try{
+      var v=$('vid');
+      if(!camStream||!camTrack||camTrack.readyState!=='live'||(v&&v.readyState<2)) openCam();
+    }catch(e){}
+  },700);
   _rgSeq++;                      // huy dot ve dang cho (neu co)
   $('grid').innerHTML='';
   $('lib').classList.add('hide');syncUI();
@@ -730,7 +738,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v35-thuvien-nhanh';
+const APP_VER='v36-camera-on';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
