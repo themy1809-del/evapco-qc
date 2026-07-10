@@ -362,7 +362,7 @@ async function listCams(){
 async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
-    let vc={width:{ideal:1600},height:{ideal:1200},aspectRatio:{ideal:4/3}};   // 4:3 nhu mau bao cao (v38)
+    let vc={width:{ideal:2048},height:{ideal:1536},aspectRatio:{ideal:4/3}};   // 4:3 do net cao (v39)
     if(camList.length>1 && camList[camPick]) vc.deviceId={exact:camList[camPick].deviceId};
     else vc.facingMode='environment';
     camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
@@ -488,16 +488,26 @@ async function snap(){
   let sx=0,sy=0,sw=vw,sh=vh;
   /*full-frame: khong cat 4:3, thu ca khung vua*/
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
-  const sc=Math.min(1,1600/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
+  const sc=Math.min(1,2048/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
-  const q=big?0.8:0.85;
+  const q=big?0.85:0.9;
   const ts=240/Math.max(cw,ch),tc2=document.createElement('canvas');tc2.width=Math.max(1,Math.round(cw*ts));tc2.height=Math.max(1,Math.round(ch*ts));
   tc2.getContext('2d').drawImage(c,0,0,tc2.width,tc2.height);
   // nen BAT DONG BO -> bam chup khong bi khung
   const _r=await Promise.all([canvasToB64(c,q),canvasToB64(tc2,0.6)]);
   const b64=_r[0], tb=_r[1];
+  try{   // v39: do DO NET (bien thien diem anh tren thumb) -> mo thi bao ngay de chup lai
+    const g2=tc2.getContext('2d'),dd=g2.getImageData(0,0,tc2.width,tc2.height).data;
+    let sum=0,n2=0;
+    for(let y=1;y<tc2.height-1;y+=2)for(let x=1;x<tc2.width-1;x+=2){
+      const i0=(y*tc2.width+x)*4, l=dd[i0]*0.3+dd[i0+1]*0.6+dd[i0+2]*0.1;
+      const r1=dd[i0+8]*0.3+dd[i0+9]*0.6+dd[i0+10]*0.1;
+      const d2=l-r1; sum+=d2*d2; n2++;
+    }
+    if(n2>0 && (sum/n2)<18) setTimeout(()=>toast('⚠️ Ảnh có vẻ MỜ — nên chụp lại (giữ chắc tay / chạm lấy nét)'),700);
+  }catch(_e){}
   const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
@@ -752,7 +762,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v38-anh-4-3';
+const APP_VER='v39-net-hon';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
