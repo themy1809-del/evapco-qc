@@ -689,8 +689,19 @@ function nextName(k){
   if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=photos.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
   const c=photos.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
 }
-function quickName(i,k){photos[i].name=nextName(k);idbPatch(photos[i].id,{name:photos[i].name});renderGrid();}
-function rename(i,v){photos[i].name=(v.trim()||photos[i].name);idbPatch(photos[i].id,{name:photos[i].name});}
+function quickName(i,k){
+  const p=photos[i]; p.name=nextName(k);
+  if(p.up){ p.up=false; idbPatch(p.id,{name:p.name,up:false}); toast('Tên mới: '+p.name+' — GỬI LẠI lên Drive như ảnh mới'); autoSend(p); }
+  else idbPatch(p.id,{name:p.name});
+  renderGrid();
+}
+function rename(i,v){
+  const p=photos[i], nv=(v.trim()||p.name);
+  if(nv===p.name){ idbPatch(p.id,{name:p.name}); return; }
+  p.name=nv;
+  if(p.up){ p.up=false; idbPatch(p.id,{name:nv,up:false}); toast('Tên mới: '+nv+' — GỬI LẠI lên Drive như ảnh mới'); autoSend(p); try{updBadge(p);updLibTitle();}catch(e){} }
+  else idbPatch(p.id,{name:nv});
+}
 function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
 function clearUploaded(){
   const up=photos.filter(p=>p.up);
@@ -762,7 +773,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v39-net-hon';
+const APP_VER='v40-doi-ten-gui-lai';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
