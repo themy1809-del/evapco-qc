@@ -362,7 +362,7 @@ async function listCams(){
 async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
-    let vc={width:{ideal:1920},height:{ideal:1080}};
+    let vc={width:{ideal:1600},height:{ideal:1200},aspectRatio:{ideal:4/3}};   // 4:3 nhu mau bao cao (v38)
     if(camList.length>1 && camList[camPick]) vc.deviceId={exact:camList[camPick].deviceId};
     else vc.facingMode='environment';
     camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
@@ -752,7 +752,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v37-xoay-chuan';
+const APP_VER='v38-anh-4-3';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
