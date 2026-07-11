@@ -142,9 +142,9 @@ const TYPES=[
  {k:'L',  name:'Level',    kind:'num', per:1},
  {k:'A',  name:'Dim',      kind:'num', per:2},
  {k:'B',  name:'Điểm B',   kind:'num'},
- {k:'GAP',name:'Gap',      kind:'freepos',per:3,def:'1-1'},
+ {k:'P',  name:'Điểm Point',kind:'freepos',per:3,def:'1'},
+ {k:'G',  name:'Điểm Gap', kind:'freepos',per:3,def:'1'},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
- {k:'MK', name:'MK gõ', kind:'freepos',per:1,def:'0T'},
  {k:'MAP',name:'Map',      kind:'free'},
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
@@ -544,11 +544,15 @@ function checkMissing(){
   const lN=nums('L',/^L(\d+)$/);
   {const miss=[];for(let i=1;i<=8;i++)if(!lN.has(i))miss.push('L'+i);
    L.push('Level: '+lN.size+'/8'+(miss.length?' · THIẾU: '+miss.join(', '):' ✓'));}
-  // GAP lien tuc
-  const gN=nums('GAP',/^GAP(\d+)-\d+$/);
-  if(gN.size){const mx=Math.max(...gN);const miss=[];for(let i=1;i<=mx;i++)if(!gN.has(i))miss.push('GAP'+i+'-'+i);
-    L.push('Gap: '+gN.size+' điểm'+(miss.length?' · THIẾU: '+miss.join(', '):''));}
-  else L.push('Gap: CHƯA CHỤP');
+  // GAP lien tuc (G1, G2... — chap nhan ca kieu cu GAP1-1)
+  const gN=nums('G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
+  if(gN.size){const mx=Math.max(...gN);const miss=[];for(let i=1;i<=mx;i++)if(!gN.has(i))miss.push('G'+i);
+    L.push('Điểm Gap: '+gN.size+' điểm'+(miss.length?' · THIẾU: '+miss.join(', '):''));}
+  else L.push('Điểm Gap: CHƯA CHỤP');
+  // DIEM POINT lien tuc (P1, P2...)
+  const pN=nums('P',/^P(\d+)(?:-\d+)?$/);
+  if(pN.size){const mx=Math.max(...pN);const miss=[];for(let i=1;i<=mx;i++)if(!pN.has(i))miss.push('P'+i);
+    L.push('Điểm Point: '+pN.size+' điểm'+(miss.length?' · THIẾU: '+miss.join(', '):''));}
   // MK chuan 11 vi tri
   const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
   const mkMiss=MKS.filter(k=>!bases['MK'+k]);
@@ -674,7 +678,7 @@ function closeLib(){
 let _rgSeq=0;
 function cardHTML(p,i){
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-  const chips=['TT','L','A','B','GAP','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  const chips=['TT','L','A','B','P','G','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
 }
 function renderGrid(){
@@ -738,7 +742,8 @@ function nextName(k){
   if(k==='A'){let pts={};photos.forEach(p=>{const m=/^A(\d+)\.(\d+)/.exec(p.name);if(m)pts[m[1]]=Math.max(pts[m[1]]||0,+m[2]);});let pn=1;while((pts[pn]||0)>=2)pn++;return 'A'+pn+'.'+((pts[pn]||0)+1);}
   if(k==='L'){let mx=0;photos.forEach(p=>{const m=/^L(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'L'+(mx+1)+'.1';}
   if(k==='B'){let mx=0;photos.forEach(p=>{const m=/^B(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'B'+(mx+1)+'.1';}
-  if(k==='GAP'){let mx=0;photos.forEach(p=>{const m=/^GAP(\d+)-/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'GAP'+n+'-'+n+'.1';}
+  if(k==='G'||k==='GAP'){let mx=0;photos.forEach(p=>{const m=/^G(?:AP)?(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'G'+n+'.1';}
+  if(k==='P'){let mx=0;photos.forEach(p=>{const m=/^P(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'P'+n+'.1';}
   if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=photos.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
   const c=photos.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
 }
@@ -826,7 +831,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v44-pair-cu-trong-thuvien';
+const APP_VER='v45-diem-point';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
