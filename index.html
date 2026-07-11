@@ -88,6 +88,7 @@ button:active{transform:scale(.95)}
   <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
+  <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A — gồm thả dọi) · Gap · Marking · Map · Độ dày.<br>
   A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Tổng thể/Map/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
@@ -560,13 +561,37 @@ function checkMissing(){
 }
 let libFilter='all';
 let libScope='pair';   // v35: mac dinh CHI hien anh PAIR dang lam -> thu vien nhe, het treo
-function inScope(p){return libScope==='all'||(String(p.sec||'')===SEC()&&String(p.pair||'')===PAIR());}
+let _vScope=null;   // v42: dang XEM LAI pair cu (chi xem, khong doi pair dang lam)
+function inScope(p){
+  if(_vScope) return String(p.sec||'')===_vScope.s&&String(p.pair||'')===_vScope.p;
+  return libScope==='all'||(String(p.sec||'')===SEC()&&String(p.pair||'')===PAIR());
+}
+function xemCu(){
+  const g={};
+  photos.forEach(p=>{const k=(p.sec||'?')+'|'+(p.pair||'?');if(!g[k])g[k]={n:0,u:0};g[k].n++;if(p.up)g[k].u++;});
+  const ks=Object.keys(g).sort();
+  if(!ks.length){alert('Chưa có ảnh nào lưu trong máy.');return;}
+  let ov=document.getElementById('cuOv'); if(ov)ov.remove();
+  ov=document.createElement('div'); ov.id='cuOv';
+  ov.style.cssText='position:fixed;inset:0;background:#0e1726;z-index:300;overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0))';
+  let h='<h3 style="color:#fff;margin:4px 0 10px">📂 PAIR đã chụp trong máy</h3>';
+  ks.forEach(k=>{const a=k.split('|'),it=g[k];
+    h+='<button style="display:block;width:100%;text-align:left;margin:6px 0;padding:14px;border:0;border-radius:12px;background:#16233a;color:#fff;font-size:16px;font-weight:700" onclick="xemPair(\''+a[0]+'\',\''+a[1]+'\')">Section '+a[0]+' / PAIR '+a[1]+'<br><span style="font-size:13px;color:#9fb3c8;font-weight:400">'+it.n+' ảnh · ✓ Drive '+it.u+' · ⏳ '+(it.n-it.u)+'</span></button>';});
+  h+='<button style="display:block;width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#334155;color:#fff;font-weight:700" onclick="document.getElementById(\'cuOv\').remove()">Đóng</button>';
+  ov.innerHTML=h; document.body.appendChild(ov);
+}
+function xemPair(s,p){
+  _vScope={s:s,p:p};
+  const ov=document.getElementById('cuOv'); if(ov)ov.remove();
+  document.getElementById('setup').classList.add('hide');
+  openLib();
+}
 function setFilter(f){libFilter=f;renderGrid();}
 function updLibTitle(){
   const sc=photos.filter(inScope);
   const up=sc.filter(p=>p.up).length, pend=sc.length-up;
   const pendAll=photos.filter(p=>!p.up).length;
-  const t=$('libTitle'); if(t)t.textContent=(libScope==='pair'?'PAIR này: ':'Tất cả: ')+sc.length+' · ✓'+up+' · ⏳'+pend;
+  const t=$('libTitle'); if(t)t.textContent=(_vScope?('CŨ S'+_vScope.s+'/P'+_vScope.p+': '):(libScope==='pair'?'PAIR này: ':'Tất cả: '))+sc.length+' · ✓'+up+' · ⏳'+pend;
   const sb=$('sendBtn');
   if(sb&&!sb.disabled) sb.textContent = pendAll ? ('☁️ Gửi '+pendAll+' ảnh lên Drive') : '☁️ Đã gửi hết ✓';
   const fs=document.getElementById('fScope');
@@ -604,6 +629,13 @@ function openLib(){
   renderGrid();$('lib').classList.remove('hide');
 }
 function closeLib(){
+  if(_vScope){                       // v42: dang xem PAIR CU -> dong la ve MAN HINH DAU (khong dung cham pair dang lam)
+    _vScope=null; _rgSeq++;
+    document.getElementById('grid').innerHTML='';
+    document.getElementById('lib').classList.add('hide');
+    if(!camStream){ document.getElementById('setup').classList.remove('hide'); return; }
+    syncUI(); return;
+  }
   // v36: bat lai khung hinh; neu camera chet (man den) thi TU MO LAI
   try{if(camTrack&&camTrack.enabled===false)camTrack.enabled=true;}catch(e){}
   try{var _v=$('vid');if(_v&&_v.play)_v.play().catch(function(){});}catch(e){}
@@ -773,7 +805,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v41-nhin-dung-khung';
+const APP_VER='v42-xem-pair-cu';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
