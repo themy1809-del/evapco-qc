@@ -609,6 +609,8 @@ function updLibTitle(){
   if(fs){fs.textContent=(libScope==='pair'?'📁 PAIR này':'📁 Tất cả');fs.style.background=(libScope==='pair')?'#16a34a':'#6b7280';fs.style.display=_vScope?'none':'';}
   const lt2=document.getElementById('fLamTiep');
   if(lt2) lt2.style.display=_vScope?'':'none';
+  const fc2=document.getElementById('fCu');
+  if(fc2) fc2.style.display=_vScope?'none':'';
   [['fAll','all'],['fPend','pend'],['fUp','up']].forEach(([id,m])=>{
     const b=document.getElementById(id);
     if(b)b.style.background=(libFilter===m)?'#1a73e8':'#ffffff22';
@@ -634,6 +636,9 @@ function openLib(){
       const lt=document.createElement('button'); lt.id='fLamTiep'; lt.textContent='▶ Làm PAIR này';
       lt.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#b45309;flex:0 0 auto;display:none';
       lt.onclick=lamTiepCu; h.appendChild(lt);
+      const fc=document.createElement('button'); fc.id='fCu'; fc.textContent='📂 PAIR cũ';
+      fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#6b5b95;flex:0 0 auto';
+      fc.onclick=xemCu; h.appendChild(fc);
       [['fAll','Tất cả'],['fPend','⏳ Chưa gửi'],['fUp','✓ Drive']].forEach(([id,lb])=>{
         const b=document.createElement('button'); b.id=id; b.textContent=lb;
         b.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#ffffff22;flex:0 0 auto';
@@ -821,7 +826,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v43-lam-tiep-pair-cu';
+const APP_VER='v44-pair-cu-trong-thuvien';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
