@@ -493,6 +493,7 @@ async function snap(){
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
+  const nmDup=photos.some(p=>p.name===nm && (p.sec||'')===SEC() && (p.pair||'')===PAIR());
   const q=big?0.85:0.9;
   const ts=240/Math.max(cw,ch),tc2=document.createElement('canvas');tc2.width=Math.max(1,Math.round(cw*ts));tc2.height=Math.max(1,Math.round(ch*ts));
   tc2.getContext('2d').drawImage(c,0,0,tc2.width,tc2.height);
@@ -519,6 +520,7 @@ async function snap(){
   const b=curBase(),lim=perLimit();
   if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
   else{toast('✓ '+nm);syncUI();}
+  if(nmDup) setTimeout(()=>toast('⚠️ TRÙNG TÊN "'+nm+'" — PAIR đã có ảnh cùng tên (bản cũ giữ ở Anh_CU). Kiểm tra lại!'),1000);
   saveState();
   }finally{_snapBusy=false;}
 }
@@ -753,9 +755,13 @@ function quickName(i,k){
   else idbPatch(p.id,{name:p.name});
   renderGrid();
 }
+function dupName(nm,self){ return photos.some(p=>p.id!==self.id && p.name===nm && (p.sec||'')===(self.sec||'') && (p.pair||'')===(self.pair||'')); }
 function rename(i,v){
   const p=photos[i], nv=(v.trim()||p.name);
   if(nv===p.name){ idbPatch(p.id,{name:p.name}); return; }
+  if(dupName(nv,p) && !confirm('⚠️ PAIR này ĐÃ CÓ ảnh khác tên "'+nv+'".\nĐổi sẽ thành 2 ảnh trùng tên. (Bản cũ trên Drive KHÔNG mất — được cất vào thư mục Anh_CU.)\n\nVẫn đổi tên?')){
+    renderGrid(); return;   // huy: giu nguyen ten cu, khong doi
+  }
   p.name=nv;
   if(p.up){ p.up=false; idbPatch(p.id,{name:nv,up:false}); toast('Tên mới: '+nv+' — GỬI LẠI lên Drive như ảnh mới'); autoSend(p); try{updBadge(p);updLibTitle();}catch(e){} }
   else idbPatch(p.id,{name:nv});
@@ -831,7 +837,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v45-diem-point';
+const APP_VER='v46-chong-de-anh';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
