@@ -155,6 +155,7 @@ const TYPES=[
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
 ];
 let photos=[], camStream=null, camTrack=null, tIdx=2;
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let pos=TYPES.map(()=>({num:1,mk:0,txt:''}));
 
 // ===== Chống mất ảnh: tự lưu vào máy (IndexedDB) =====
@@ -196,7 +197,7 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
-try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; } }catch(e){}
+try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
   try{
@@ -524,7 +525,7 @@ async function snap(){
   }catch(_e){}
   const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
-  try{ const _cb=$('iAutoSave'); if(!_cb||_cb.checked) saveToDevice(nm,b64); }catch(e){}   // luu them 1 FILE THAT vao may (neu bat)
+  try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(nm,b64); }catch(e){}   // luu file vao may CHI tren Android; iOS chan luu ngam -> bo qua de KHONG hien bang download moi lan chup
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
   autoSend(ph); pump();   // gửi NGẦM ngay khi chụp; pump() bảo đảm gửi lại tới khi MỌI ảnh lên Drive
@@ -951,7 +952,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v51-an-toan';
+const APP_VER='v52-iphone-muot';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
