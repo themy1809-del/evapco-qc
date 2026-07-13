@@ -130,6 +130,7 @@ button:active{transform:scale(.95)}
   <button id="chkBtn" onclick="checkMissing()" style="margin:0 14px 8px;padding:12px;border:0;border-radius:14px;background:#b45309;color:#fff;font-size:15px;font-weight:800">📋 Kiểm THIẾU điểm</button>
   <button id="sendBtn" onclick="sendDrive()">☁️ Gửi lên Drive</button>
   <button id="expBtn" onclick="exportBundle()">📦 Lưu file JSON (dự phòng)</button>
+  <button id="dlBtn" onclick="downloadAll()">⬇️ Tải hết ảnh về máy</button>
   <button id="clrBtn" onclick="clearUploaded()">🗑 Dọn ảnh đã gửi Drive</button>
 </section>
 
@@ -167,7 +168,9 @@ function makeThumb(b64){return new Promise(res=>{const im=new Image();im.onload=
 function updateCnt(){const e=$('cnt');if(e)e.textContent=photos.length;}
 // CHONG LAG: RAM chi giu thumbnail nho (tb); anh goc (b64) nam trong IndexedDB, doc khi can gui
 async function loadSaved(){
-  await idbOpen();const s=await idbMeta();
+  await idbOpen();
+  try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}   // xin BO NHO BEN ngay khi mo app (chong dt tu xoa)
+  const s=await idbMeta();
   if(s&&s.length){s.sort((a,b)=>(b.t||0)-(a.t||0));photos=s;}
   updateCnt();
   // anh doi cu chua co thumbnail -> lam DAN tung tam, khong chan giao dien
@@ -291,16 +294,9 @@ function start(){
       if(Array.isArray(st.pos)&&st.pos.length===pos.length) pos=st.pos;
     }
   }catch(e){}
-  // v32: may om qua nhieu anh DA GUI -> hoi don bot cho nhe may (het lag)
-  setTimeout(function(){
-    try{
-      const up=photos.filter(p=>p.up);
-      if(up.length>=80 && confirm('Máy đang giữ '+up.length+' ảnh ĐÃ gửi Drive.\nDọn bớt cho máy nhẹ, hết lag? (ảnh trên Drive vẫn còn đủ)')){
-        up.forEach(p=>idbDel(p.id)); photos=photos.filter(p=>!p.up); updateCnt();
-        toast('Đã dọn '+up.length+' ảnh — máy nhẹ hơn nhiều');
-      }
-    }catch(e){}
-  },1200);
+  // 12/07: BO han viec tu dong xoa anh khi bat dau (tung gay MAT anh khi ban Drive that su thieu).
+  //   Chi tu gui not nhung anh chua len Drive. Muon don may thi bam nut '🗑' (co kiem tra Drive truoc).
+  setTimeout(function(){ try{ pump(); const pend=photos.filter(p=>!p.up).length; if(pend) toast('Còn '+pend+' ảnh chưa lên Drive — đang tự gửi lại…'); }catch(e){} },1200);
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
   buildTypes(); syncUI(); openCam(); saveState();
 }
@@ -514,7 +510,7 @@ async function snap(){
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
-  autoSend(ph);   // gửi NGẦM ngay khi chụp -> cuối buổi gần như đã lên Drive hết
+  autoSend(ph); pump();   // gửi NGẦM ngay khi chụp; pump() bảo đảm gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
   const b=curBase(),lim=perLimit();
@@ -767,12 +763,46 @@ function rename(i,v){
   else idbPatch(p.id,{name:nv});
 }
 function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
-function clearUploaded(){
+async function clearUploaded(){
   const up=photos.filter(p=>p.up);
   if(!up.length){alert('Chưa có ảnh nào đã gửi lên Drive.');return;}
-  if(!confirm('Dọn '+up.length+' ảnh ĐÃ gửi Drive khỏi máy? (Ảnh CHƯA gửi vẫn được giữ)'))return;
-  up.forEach(p=>idbDel(p.id)); photos=photos.filter(p=>!p.up);
-  renderGrid();updateCnt();
+  if(!confirm('Sẽ KIỂM TRA Drive, chỉ xóa khỏi máy những ảnh CHẮC CHẮN đã có trên Drive.\n('+up.length+' ảnh — ảnh chưa gửi luôn được giữ). Tiếp tục?'))return;
+  const url=DRV(); const groups={};
+  up.forEach(p=>{const k=(p.sec||SEC())+'|'+(p.pair||PAIR());(groups[k]=groups[k]||[]).push(p);});
+  let del={}, ndel=0, nback=0, nskip=0;
+  for(const k in groups){
+    const parts=k.split('|'), sec=parts[0], pair=parts[1]; let names=null;
+    try{
+      const r=await fetch(url+'?action=list&token='+encodeURIComponent(TOKEN)+'&section='+encodeURIComponent(sec)+'&pair='+encodeURIComponent(pair));
+      const j=await r.json(); if(j&&j.ok&&Array.isArray(j.files)) names=new Set(j.files.map(f=>String(f.name).replace(/\.jpg$/i,'')));
+    }catch(e){}
+    if(!names){ nskip+=groups[k].length; continue; }   // khong kiem duoc pair nay -> KHONG xoa gi cho an toan
+    for(const p of groups[k]){
+      if(names.has(p.name)){ idbDel(p.id); del[p.id]=1; ndel++; }
+      else { p.up=false; idbPatch(p.id,{up:false}); nback++; }   // Drive KHONG co anh nay -> GIU LAI + gui lai
+    }
+  }
+  photos=photos.filter(p=>!del[p.id]);
+  renderGrid(); updateCnt(); try{if(typeof syncUI==='function')syncUI();}catch(e){}
+  if(nback) pump();
+  alert('Đã xóa '+ndel+' ảnh (đã xác nhận có trên Drive).'
+    +(nback?('\n⚠️ '+nback+' ảnh KHÔNG thấy trên Drive → GIỮ LẠI và đang gửi lại.'):'')
+    +(nskip?('\n'+nskip+' ảnh chưa kiểm được (mạng) → giữ nguyên, chưa xóa.'):''));
+}
+async function downloadAll(){
+  const list=photos.filter(p=>inScope(p));
+  if(!list.length){alert('PAIR này chưa có ảnh.');return;}
+  if(!confirm('Tải '+list.length+' ảnh của PAIR này về máy (thư mục Tải về)?\nMáy có thể hỏi cho phép tải nhiều tệp — chọn Cho phép.'))return;
+  let n=0;
+  for(const p of list){
+    try{
+      const f=await idbGet(p.id); const b64=f&&f.b64; if(!b64)continue;
+      const a=document.createElement('a'); a.href='data:image/jpeg;base64,'+b64; a.download=p.name+'.jpg';
+      document.body.appendChild(a); a.click(); a.remove(); n++;
+      await new Promise(r=>setTimeout(r,500));
+    }catch(e){}
+  }
+  toast('Đã tải '+n+' ảnh về máy (xem thư mục Tải về)');
 }
 
 async function exportBundle(){
@@ -810,6 +840,26 @@ async function autoSend(p){   // gui nen 1 anh ngay khi chup (v32: toi da 2 cung
   _auto--;
   try{ if(typeof syncUI==='function') syncUI(); }catch(_){}
 }
+// HANG DOI GUI CHAC CHAN: gui lai TAT CA anh chua len Drive toi khi xong (khong bo sot khi chup nhanh / rot mang)
+let _pumping=false;
+async function pump(){
+  if(_pumping) return;
+  var url=DRV(); if(!url || !navigator.onLine) return;
+  _pumping=true;
+  try{
+    let guard=0;
+    while(navigator.onLine && guard++<300){
+      const todo=photos.filter(p=>!p.up);
+      if(!todo.length) break;
+      const batch=todo.slice(0,3);
+      await Promise.all(batch.map(p=>sendOne(url,p).catch(()=>{})));
+      try{ if(typeof syncUI==='function') syncUI(); }catch(_){}
+      if(batch.every(p=>!p.up)) await new Promise(r=>setTimeout(r,4000));   // ca batch that bai (mang chap chon) -> nghi roi thu lai
+    }
+  } finally { _pumping=false; }
+}
+try{ setInterval(function(){ if(photos.some(p=>!p.up)) pump(); }, 20000); }catch(e){}   // cu 20s tu gui not anh con ket
+try{ window.addEventListener('online', pump); }catch(e){}                                 // co mang lai la gui tiep ngay
 async function sendOne(url,p){
   try{
     let b64=p.b64;
@@ -837,7 +887,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v46-chong-de-anh';
+const APP_VER='v47-chong-mat-anh';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
