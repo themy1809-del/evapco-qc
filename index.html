@@ -299,6 +299,7 @@ function start(){
   setTimeout(function(){ try{ pump(); const pend=photos.filter(p=>!p.up).length; if(pend) toast('Còn '+pend+' ảnh chưa lên Drive — đang tự gửi lại…'); }catch(e){} },1200);
   $('setup').classList.add('hide'); $('cam').classList.remove('hide');
   buildTypes(); syncUI(); openCam(); saveState();
+  try{ syncFromDrive(true); }catch(e){}   // vao PAIR la keo danh sach da-chup tren Drive ve (biet con thieu diem nao)
 }
 function buildTypes(){
   $('types').innerHTML='';
@@ -626,8 +627,31 @@ function updBadge(p){
   }
   updLibTitle();
 }
+// XEM DA CHUP: keo danh sach ten anh DA CO tren Drive cua Section/PAIR nay -> hien trong thu vien
+//   (du may da mat sach local van biet diem nao da chup -> khong chup lai trung)
+async function syncFromDrive(silent){
+  const url=DRV(); if(!url||!navigator.onLine){ if(!silent)toast('Chưa có mạng để xem Drive'); return; }
+  const sec=SEC(), pair=PAIR(); if(!sec||!pair){ if(!silent)toast('Chưa chọn Section/PAIR'); return; }
+  try{
+    const r=await fetch(url+'?action=list&token='+encodeURIComponent(TOKEN)+'&section='+encodeURIComponent(sec)+'&pair='+encodeURIComponent(pair));
+    const j=await r.json();
+    if(!(j&&j.ok&&Array.isArray(j.files))){ if(!silent)toast('Không đọc được Drive'); return; }
+    const have=new Set(photos.filter(p=>(p.sec||'')===sec&&(p.pair||'')===pair).map(p=>p.name));
+    let added=0;
+    for(const f of j.files){
+      const nm=String(f.name||'').replace(/\.jpg$/i,'');
+      if(!nm||have.has(nm)) continue;
+      photos.push({id:'drv-'+f.id,name:nm,sec:sec,pair:pair,up:true,drive:true,driveId:f.id,t:1});
+      have.add(nm); added++;
+    }
+    updateCnt();
+    if($('lib')&&!$('lib').classList.contains('hide')) renderGrid();
+    if(!silent) toast('Trên Drive đã có '+j.files.length+' ảnh của PAIR này'+(added?(' (+'+added+' hiện thêm)'):''));
+  }catch(e){ if(!silent)toast('Lỗi đọc Drive'); }
+}
 function openLib(){
   try{$('vid').pause();}catch(e){}   // v36: chi TAM DUNG khung hinh (khong tat track -> het man den)
+  try{ syncFromDrive(true); }catch(e){}   // mo thu vien la tu keo danh sach Drive ve (biet da chup gi)
   if(!document.getElementById('fAll')){
     const h=document.querySelector('#lib header');
     if(h){
@@ -641,6 +665,9 @@ function openLib(){
       const fc=document.createElement('button'); fc.id='fCu'; fc.textContent='📂 PAIR cũ';
       fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#6b5b95;flex:0 0 auto';
       fc.onclick=xemCu; h.appendChild(fc);
+      const fd=document.createElement('button'); fd.id='fDrive'; fd.textContent='☁️ Đã chụp (Drive)';
+      fd.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#0b74de;flex:0 0 auto';
+      fd.onclick=()=>syncFromDrive(false); h.appendChild(fd);
       [['fAll','Tất cả'],['fPend','⏳ Chưa gửi'],['fUp','✓ Drive']].forEach(([id,lb])=>{
         const b=document.createElement('button'); b.id=id; b.textContent=lb;
         b.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#ffffff22;flex:0 0 auto';
@@ -675,6 +702,9 @@ function closeLib(){
 // v32: ve thu vien theo TUNG DOT 40 the (nhieu tram anh van muot) + anh lazy
 let _rgSeq=0;
 function cardHTML(p,i){
+  if(p.drive && !p.tb){   // anh "ma" tu Drive (may khong con ban local): khung ☁️ + ten, bam de tai ve xem
+    return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+p.name+'</b></div>';
+  }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
   const chips=['TT','L','A','B','P','G','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
@@ -702,6 +732,11 @@ async function viewPhoto(i){
   const p=photos[i]; if(!p) return;
   let b64=null;
   try{ const full=await idbGet(p.id); b64=(full&&full.b64)||null; }catch(e){}
+  if(!b64 && p.drive && p.driveId){   // anh tren Drive (khong con local) -> tai ve xem
+    toast('Đang tải ảnh từ Drive…');
+    try{ const r=await fetch(DRV()+'?action=get&token='+encodeURIComponent(TOKEN)+'&id='+encodeURIComponent(p.driveId)); const j=await r.json(); if(j&&j.ok&&j.b64) b64=j.b64; }catch(e){}
+    if(!b64){ toast('Không tải được ảnh từ Drive (xem trong app Google Drive)'); return; }
+  }
   if(!b64) b64=p.tb||'';
   let ov=document.getElementById('viewOv');
   if(!ov){
@@ -764,7 +799,7 @@ function rename(i,v){
 }
 function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
 async function clearUploaded(){
-  const up=photos.filter(p=>p.up);
+  const up=photos.filter(p=>p.up && !p.drive);   // KHONG dung anh "ma" tu Drive (chi don ban local that)
   if(!up.length){alert('Chưa có ảnh nào đã gửi lên Drive.');return;}
   if(!confirm('Sẽ KIỂM TRA Drive, chỉ xóa khỏi máy những ảnh CHẮC CHẮN đã có trên Drive.\n('+up.length+' ảnh — ảnh chưa gửi luôn được giữ). Tiếp tục?'))return;
   const url=DRV(); const groups={};
@@ -887,7 +922,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v47-chong-mat-anh';
+const APP_VER='v48-xem-da-chup';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
