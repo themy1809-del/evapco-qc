@@ -87,6 +87,7 @@ button:active{transform:scale(.95)}
   <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
   <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
+  <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A — gồm thả dọi) · Gap · Marking · Map · Độ dày.<br>
@@ -166,6 +167,17 @@ function idbGet(id){return new Promise(res=>{try{const q=DB.transaction('photos'
 async function idbPatch(id,f){const r=await idbGet(id);if(r){Object.assign(r,f);idbPut(r);}}
 function makeThumb(b64){return new Promise(res=>{const im=new Image();im.onload=()=>{try{const s=240/Math.max(im.width,im.height),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.6).split(',')[1]);}catch(e){res(null);}};im.onerror=()=>res(null);im.src='data:image/jpeg;base64,'+b64;});}
 function updateCnt(){const e=$('cnt');if(e)e.textContent=photos.length;}
+// LUU FILE THAT VAO MAY (Android -> Tai ve; iOS 16.4+ -> Files/Tai ve) bang blob download
+function saveToDevice(name,b64){
+  try{
+    const bin=atob(b64),u8=new Uint8Array(bin.length);
+    for(let k=0;k<bin.length;k++)u8[k]=bin.charCodeAt(k);
+    const url=URL.createObjectURL(new Blob([u8],{type:'image/jpeg'}));
+    const a=document.createElement('a'); a.href=url; a.download=(name||'anh')+'.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){try{URL.revokeObjectURL(url);}catch(e){}},5000);
+  }catch(e){}
+}
 // CHONG LAG: RAM chi giu thumbnail nho (tb); anh goc (b64) nam trong IndexedDB, doc khi can gui
 async function loadSaved(){
   await idbOpen();
@@ -182,6 +194,7 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; } }catch(e){}
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
   try{
@@ -509,6 +522,7 @@ async function snap(){
   }catch(_e){}
   const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
+  try{ const _cb=$('iAutoSave'); if(!_cb||_cb.checked) saveToDevice(nm,b64); }catch(e){}   // luu them 1 FILE THAT vao may (neu bat)
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
   autoSend(ph); pump();   // gửi NGẦM ngay khi chụp; pump() bảo đảm gửi lại tới khi MỌI ảnh lên Drive
@@ -922,7 +936,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v48-xem-da-chup';
+const APP_VER='v49-luu-may';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
