@@ -133,7 +133,7 @@ button:active{transform:scale(.95)}
   <button id="chkBtn" onclick="checkMissing()" style="margin:0 14px 8px;padding:12px;border:0;border-radius:14px;background:#b45309;color:#fff;font-size:15px;font-weight:800">📋 Kiểm THIẾU điểm</button>
   <button id="sendBtn" onclick="sendDrive()">☁️ Gửi lên Drive</button>
   <button id="expBtn" onclick="exportBundle()">📦 Lưu file JSON (dự phòng)</button>
-  <button id="dlBtn" onclick="downloadAll()">⬇️ Tải hết ảnh về máy</button>
+  <button id="dlBtn" onclick="downloadAll()" style="display:none">⬇️ Tải hết ảnh về máy</button>
   <button id="clrBtn" onclick="clearUploaded()">🗑 Dọn ảnh đã gửi Drive</button>
 </section>
 
@@ -820,7 +820,13 @@ function rename(i,v){
   if(p.up){ p.up=false; idbPatch(p.id,{name:nv,up:false}); toast('Tên mới: '+nv+' — GỬI LẠI lên Drive như ảnh mới'); autoSend(p); try{updBadge(p);updLibTitle();}catch(e){} }
   else idbPatch(p.id,{name:nv});
 }
-function del(i){const p=photos.splice(i,1)[0];if(p)idbDel(p.id);renderGrid();updateCnt();}
+function del(i){
+  const p=photos[i]; if(!p) return;
+  const msg = p.up ? ('Xoá ảnh "'+p.name+'" khỏi máy? (bản trên Drive vẫn còn)')
+                   : ('⚠️ Ảnh "'+p.name+'" CHƯA gửi Drive — xoá là MẤT LUÔN!\n\nVẫn xoá?');
+  if(!confirm(msg)) return;
+  photos.splice(i,1); idbDel(p.id); renderGrid(); updateCnt();
+}
 async function clearUploaded(){
   const up=photos.filter(p=>p.up && !p.drive);   // KHONG dung anh "ma" tu Drive (chi don ban local that)
   if(!up.length){alert('Chưa có ảnh nào đã gửi lên Drive.');return;}
@@ -945,7 +951,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v50-gon-nut';
+const APP_VER='v51-an-toan';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
