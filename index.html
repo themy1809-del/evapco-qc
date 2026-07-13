@@ -106,6 +106,7 @@ button:active{transform:scale(.95)}
       <span id="ptlbl">A1<span id="ptcnt"></span></span><input id="ptTxt" oninput="ptType()" placeholder="vd 1-4" style="display:none">
       <button id="ptNext" onclick="ptMove(1)">›</button>
       <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
+      <button id="homeBtn" onclick="goHome()" title="Về trang chủ">🏠</button>
     </div>
   </div>
   <div id="zoomctl">
@@ -125,6 +126,7 @@ button:active{transform:scale(.95)}
 <section id="lib" class="hide">
   <header>
     <button onclick="closeLib()" style="background:#26405f;color:#fff;padding:9px 14px;border-radius:10px;border:0;font-weight:700">‹ Chụp tiếp</button>
+    <button onclick="goHome()" style="background:#6b5b95;color:#fff;padding:9px 12px;border-radius:10px;border:0;font-weight:700" title="Về trang chủ">🏠</button>
     <h2 id="libTitle">Ảnh</h2>
   </header>
   <div id="grid"></div>
@@ -692,6 +694,12 @@ function openLib(){
   }
   renderGrid();$('lib').classList.remove('hide');
 }
+function goHome(){   // ve TRANG DAU (setup): tat camera cho nhe may, giu nguyen anh da chup
+  try{ if(camStream) camStream.getTracks().forEach(function(t){try{t.stop();}catch(e){}}); }catch(e){}
+  camStream=null; camTrack=null;
+  try{$('vid').pause();}catch(e){}
+  $('cam').classList.add('hide'); $('lib').classList.add('hide'); $('setup').classList.remove('hide');
+}
 function closeLib(){
   if(_vScope){                       // v42: dang xem PAIR CU -> dong la ve MAN HINH DAU (khong dung cham pair dang lam)
     _vScope=null; _rgSeq++;
@@ -715,13 +723,14 @@ function closeLib(){
 }
 // v32: ve thu vien theo TUNG DOT 40 the (nhieu tram anh van muot) + anh lazy
 let _rgSeq=0;
+function toggleType(b){try{const c=b.closest('.card').querySelector('.chips');if(c)c.style.display=(c.style.display==='none'?'':'none');}catch(e){}}
 function cardHTML(p,i){
   if(p.drive && !p.tb){   // anh "ma" tu Drive (may khong con ban local): khung ☁️ + ten, bam de tai ve xem
     return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+p.name+'</b></div>';
   }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
   const chips=['TT','L','A','B','P','G','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
-  return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button class="del" onclick="del('+i+')">✕</button></div><div class="chips">'+chips+'</div>';
+  return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+p.name+'" onchange="rename('+i+',this.value)"><button onclick="toggleType(this)" style="flex:0 0 auto;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:800;background:#334155;color:#fff">Loại ⌄</button><button class="del" onclick="del('+i+')">✕</button></div><div class="chips" style="display:none">'+chips+'</div>';
 }
 function renderGrid(){
   updLibTitle();
@@ -936,7 +945,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v49-luu-may';
+const APP_VER='v50-gon-nut';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
