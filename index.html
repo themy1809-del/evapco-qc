@@ -528,7 +528,7 @@ async function snap(){
   try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(nm,b64); }catch(e){}   // luu file vao may CHI tren Android; iOS chan luu ngam -> bo qua de KHONG hien bang download moi lan chup
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
-  autoSend(ph); pump();   // gửi NGẦM ngay khi chụp; pump() bảo đảm gửi lại tới khi MỌI ảnh lên Drive
+  pump();   // gửi NGẦM ngay khi chụp; CHỈ pump() (bỏ autoSend để không gửi 2 lần) — pump lo gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
   const b=curBase(),lim=perLimit();
@@ -926,6 +926,8 @@ async function pump(){
 try{ setInterval(function(){ if(photos.some(p=>!p.up)) pump(); }, 20000); }catch(e){}   // cu 20s tu gui not anh con ket
 try{ window.addEventListener('online', pump); }catch(e){}                                 // co mang lai la gui tiep ngay
 async function sendOne(url,p){
+  if(p.up || p._sending) return false;   // da gui / DANG gui roi -> KHONG gui lai (chong 2 tam GIONG NHAU tren Drive)
+  p._sending=true;
   try{
     let b64=p.b64;
     if(!b64){const f=await idbGet(p.id);b64=f&&f.b64;}   // anh goc lay tu IndexedDB (RAM chi co thumbnail)
@@ -936,6 +938,7 @@ async function sendOne(url,p){
     const j=await r.json();
     if(j&&j.ok){p.up=true;idbPatch(p.id,{up:true});queueLog(p);try{updBadge(p);}catch(e){}return true;}
   }catch(e){}
+  finally{ p._sending=false; }
   return false;
 }
 async function sendDrive(){
@@ -952,7 +955,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v52-iphone-muot';
+const APP_VER='v53-het-trung';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
