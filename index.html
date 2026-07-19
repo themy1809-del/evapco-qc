@@ -209,6 +209,24 @@ setTimeout(function(){
     b.style.cssText='width:100%;margin:8px 0;padding:16px;border:0;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:800';
     b.onclick=start;
     sb.parentNode.insertBefore(b,sb);
+    // v55: nut CHUP PAIR MOI — bam la goi y so pair ke tiep, vao chup ngay man hinh moi tinh
+    const b2=document.createElement('button');
+    b2.textContent='🆕 CHỤP PAIR MỚI (đổi số PAIR)';
+    b2.style.cssText='width:100%;margin:8px 0;padding:16px;border:0;border-radius:14px;background:#f59e0b;color:#111827;font-size:17px;font-weight:800';
+    b2.onclick=function(){
+      try{
+        const cur=($('iPair').value||'').trim();
+        let goiy=cur; const m=cur.match(/^0*(\d+)$/);
+        if(m){ const so=parseInt(m[1],10)+1; goiy=(cur.length>1&&cur[0]==='0')?String(so).padStart(cur.length,'0'):String(so); }
+        const np=prompt('Số PAIR MỚI (Section giữ nguyên: '+$('iSec').value+')',goiy);
+        if(np===null) return;
+        const v=np.trim(); if(!v){alert('Chưa nhập số PAIR');return;}
+        $('iPair').value=v;
+        try{localStorage.setItem('ev_iPair',v);}catch(e){}
+        start();   // v54: pair doi -> man hinh tu ve A1, bo dem 0
+      }catch(e){alert('Loi: '+e);}
+    };
+    sb.parentNode.insertBefore(b2,sb);
   }catch(e){}
 },300);
 function saveState(){
@@ -958,7 +976,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v54-doi-pair';
+const APP_VER='v55-nut-pair-moi';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
