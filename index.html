@@ -308,6 +308,9 @@ function start(){
     if(st&&st.sec===SEC()&&st.pair===PAIR()){
       if(typeof st.tIdx==='number') tIdx=st.tIdx;
       if(Array.isArray(st.pos)&&st.pos.length===pos.length) pos=st.pos;
+    }else{
+      // v54: DOI Section/PAIR -> man hinh lam moi hoan toan (het canh "doi pair ma so van cu")
+      tIdx=0; pos=TYPES.map(()=>({num:1,mk:0,txt:''}));
     }
   }catch(e){}
   // 12/07: BO han viec tu dong xoa anh khi bat dau (tung gay MAT anh khi ban Drive that su thieu).
@@ -335,7 +338,7 @@ function curLabel(){const t=curType(),p=pos[tIdx];
   if(t.kind==='freepos')return (p.txt||t.def);
   return t.name;}
 function perLimit(){return curType().per||Infinity;}
-function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b).length;}
+function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b && (p.sec||'')===SEC() && (p.pair||'')===PAIR()).length;}   // v54: dem theo PAIR dang lam
 function curName(){const b=curBase();return b+'.'+(baseCount(b)+1);}
 
 function setType(i){tIdx=i;syncUI();saveState();}
@@ -955,7 +958,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v53-het-trung';
+const APP_VER='v54-doi-pair';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
