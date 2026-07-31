@@ -542,6 +542,18 @@ function canvasToB64(cv,q){
     }catch(e){res(cv.toDataURL('image/jpeg',q).split(',')[1]);}
   });
 }
+// v60: tieng "TACH" khi chup — iPhone khong rung duoc, xuong on / ngoai nang kho thay chop trang
+let _ac=null;
+function tiengTach(){
+  try{
+    _ac=_ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(_ac.state==='suspended')_ac.resume();
+    const t=_ac.currentTime,o=_ac.createOscillator(),g=_ac.createGain();
+    o.type='sine';o.frequency.setValueAtTime(1000,t);o.frequency.exponentialRampToValueAtTime(650,t+0.05);
+    g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+    o.connect(g);g.connect(_ac.destination);o.start(t);o.stop(t+0.08);
+  }catch(e){}
+}
 let _snapBusy=false;
 async function snap(){
   if(_snapBusy) return;
@@ -582,6 +594,7 @@ async function snap(){
   pump();   // gửi NGẦM ngay khi chụp; CHỈ pump() (bỏ autoSend để không gửi 2 lần) — pump lo gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
+  tiengTach();
   const b=curBase(),lim=perLimit();
   if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
   else{toast('✓ '+nm);syncUI();}
@@ -1008,7 +1021,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v59-camera-net';
+const APP_VER='v60-tieng-tach';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
