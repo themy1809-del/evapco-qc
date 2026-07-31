@@ -67,7 +67,8 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .hero-t{font-size:26px;font-weight:900;letter-spacing:.5px}
 .hero-s{font-size:12px;opacity:.85;margin-top:3px}
 #verChip{position:absolute;top:12px;right:12px;background:#ffffff22;border:1px solid #ffffff44;color:#fff;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800}
-button{transition:transform .06s ease}
+button{transition:transform .06s ease,filter .06s ease}
+button:active{transform:scale(.93);filter:brightness(1.35)}
 button:active{transform:scale(.95)}
 .card{border:1px solid #24405f;box-shadow:0 2px 8px #0004}
 .card input{font-size:15px}
@@ -1021,7 +1022,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v60-tieng-tach';
+const APP_VER='v61-cam-giac-bam';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
@@ -1035,6 +1036,21 @@ setTimeout(async ()=>{
     }
   }catch(e){}
 },2500);
+// v61: iOS bo qua user-scalable=no -> chan double-tap zoom bang JS, van giu cu bam thu 2
+document.addEventListener('touchstart',function(){},{passive:true});  // kich hoat :active tren iOS
+let _lastTap=0;
+document.addEventListener('touchend',function(e){
+  const tg=e.target, n=(tg&&tg.tagName)||'';
+  if(n==='INPUT'||n==='SELECT'||n==='TEXTAREA'||n==='LABEL') return;   // khong pha ban phim
+  const now=Date.now();
+  if(now-_lastTap<350){
+    e.preventDefault();                                   // chan phong to
+    const el=tg&&tg.closest?tg.closest('button,[onclick]'):null;
+    if(el) el.click();                                    // bam nhanh lien tuc van an het
+  }
+  _lastTap=now;
+},{passive:false});
+document.addEventListener('gesturestart',function(e){e.preventDefault();});  // iOS: chan pinch zoom
 loadSaved();   // khôi phục ảnh đã lưu khi mở lại app
 </script>
 </body></html>
