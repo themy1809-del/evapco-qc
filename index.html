@@ -1,10 +1,10 @@
 <!doctype html><html lang="vi"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1F4E78">
 <link rel="manifest" href="manifest.json">
 <title>EVAPCO QC — Chụp & Báo cáo</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e1726;color:#fff}
 .hide{display:none!important}
 #setup{max-width:520px;margin:0 auto;padding:18px}
@@ -391,7 +391,21 @@ function syncUI(){
   $('cnt').textContent=photos.length;
 }
 
-let camList=[], camPick=0;
+let camList=[], camPick=0, camAuto=false;
+// v59: cham diem ong kinh — uu tien CAM CHINH mat sau (tranh macro / goc sieu rong lam anh MO)
+function chamCam(d){
+  const l=(d.label||'').toLowerCase(); let s=0;
+  if(/back|rear|sau|environment/.test(l)) s+=10;
+  if(/front|user|selfie|trước|truoc/.test(l)) s-=100;
+  if(/ultra|macro|tele|depth|bokeh|portrait|siêu rộng|sieu rong|góc rộng|goc rong|0\.5/.test(l)) s-=50;
+  if(/camera2? 0\b|main|1x|\bwide\b(?!.*angle)/.test(l)) s+=5;
+  return s;
+}
+function pickBestCam(){
+  let bi=-1,bs=-1e9;
+  camList.forEach((d,i)=>{const s=chamCam(d);if(s>bs){bs=s;bi=i;}});
+  return bi;
+}
 async function listCams(){
   try{const ds=await navigator.mediaDevices.enumerateDevices();camList=ds.filter(d=>d.kind==='videoinput');
     $('camBtn').style.display=camList.length>1?'':'none';}catch(e){}
@@ -400,11 +414,23 @@ async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
     let vc={width:{ideal:2048},height:{ideal:1536},aspectRatio:{ideal:4/3}};   // 4:3 do net cao (v39)
-    if(camList.length>1 && camList[camPick]) vc.deviceId={exact:camList[camPick].deviceId};
+    const savedCam=(()=>{try{return localStorage.getItem('ev_camId')||''}catch(e){return ''}})();
+    if(camList.length && camList[camPick] && camList[camPick].deviceId) vc.deviceId={exact:camList[camPick].deviceId};
+    else if(savedCam) vc.deviceId={ideal:savedCam};   // v59: nho ong kinh da chon lan truoc
     else vc.facingMode='environment';
     camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
     $('vid').srcObject=camStream; camTrack=camStream.getVideoTracks()[0];
     if(!camList.length) await listCams();
+    // v59: dien thoai nhieu ong kinh hay mo nham macro/goc rong -> tu chon CAM CHINH 1 lan
+    if(!camAuto){
+      camAuto=true; await listCams();
+      const cur=(camTrack.getSettings?(camTrack.getSettings().deviceId||''):'');
+      let want=-1;
+      if(savedCam){const i=camList.findIndex(d=>d.deviceId===savedCam); if(i>=0)want=i;}
+      if(want<0) want=pickBestCam();
+      if(want>=0){camPick=want;
+        if(camList[want].deviceId && camList[want].deviceId!==cur) return openCam();}
+    }
     try{const caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
       if(caps.focusMode&&caps.focusMode.includes('continuous'))await camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});
     }catch(e){}
@@ -441,7 +467,9 @@ function toggleTorch(){
 async function switchCam(){
   if(camList.length<2){await listCams();}
   if(camList.length<2)return;
-  camPick=(camPick+1)%camList.length; await openCam();
+  camPick=(camPick+1)%camList.length;
+  try{localStorage.setItem('ev_camId',camList[camPick].deviceId||'');}catch(e){}
+  await openCam();
 }
 // ===== ZOOM BAM DUNG CAMERA CUA MAY (co 0.5x neu may co ong goc rong) =====
 let zoom=1, zCaps=null;
@@ -980,7 +1008,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v57-doi-bevel';
+const APP_VER='v59-camera-net';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
