@@ -414,7 +414,7 @@ async function listCams(){
 async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
-    let vc={width:{ideal:4032},height:{ideal:3024},aspectRatio:{ideal:4/3}};   // v63: xin toi da 12MP 4:3 (may yeu tu thoa thuan xuong; v39 cu 2048)
+    let vc={width:{ideal:3264},height:{ideal:2448},aspectRatio:{ideal:4/3}};   // v64: 8MP 4:3 — net hon han v62 (2048) ma khong lag nhu 12MP
     const savedCam=(()=>{try{return localStorage.getItem('ev_camId')||''}catch(e){return ''}})();
     if(camList.length && camList[camPick] && camList[camPick].deviceId) vc.deviceId={exact:camList[camPick].deviceId};
     else if(savedCam) vc.deviceId={ideal:savedCam};   // v59: nho ong kinh da chon lan truoc
@@ -618,7 +618,7 @@ async function snap(){
   if(_snapBusy) return;
   _snapBusy=true;
   try{
-  const S=(await grabPhotoHi())||grabUpright(); if(!S)return;   // v63: uu tien ANH THAT full cam bien; khong duoc thi ve khung video nhu cu (DA XOAY DUNG CHIEU)
+  const S=grabUpright(); if(!S)return;   // v64: BO cho takePhoto (lag/khung tren nhieu may) — chup ngay tu khung video do net cao (DA XOAY DUNG CHIEU)
   const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
@@ -1080,7 +1080,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v63-chup-net-cao';
+const APP_VER='v64-net-cao-het-lag';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
