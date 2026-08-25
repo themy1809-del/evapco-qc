@@ -414,7 +414,7 @@ async function listCams(){
 async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
-    let vc={width:{ideal:2048},height:{ideal:1536},aspectRatio:{ideal:4/3}};   // 4:3 do net cao (v39)
+    let vc={width:{ideal:4032},height:{ideal:3024},aspectRatio:{ideal:4/3}};   // v63: xin toi da 12MP 4:3 (may yeu tu thoa thuan xuong; v39 cu 2048)
     const savedCam=(()=>{try{return localStorage.getItem('ev_camId')||''}catch(e){return ''}})();
     if(camList.length && camList[camPick] && camList[camPick].deviceId) vc.deviceId={exact:camList[camPick].deviceId};
     else if(savedCam) vc.deviceId={ideal:savedCam};   // v59: nho ong kinh da chon lan truoc
@@ -520,7 +520,9 @@ function buildPresets(){   // nut nhanh 0.5x / 1x / 2x theo dung kha nang may
 }
 function zoomBy(dir){
   if(zCaps){var st=zCaps.step||((zCaps.max-zCaps.min)/10)||0.1; zoom=Math.min(zCaps.max,Math.max(zCaps.min,+(zoom+dir*st).toFixed(3)));}
-  else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));}  // khong co ong rong -> chi zoom vao duoc
+  else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));
+    if(zoom>1.4&&!window._zoomCanhBao){window._zoomCanhBao=1;setTimeout(function(){toast('🔍 Zoom số làm GIẢM NÉT — muốn thấy rõ số đo hãy LẠI GẦN');},250);}
+  }  // khong co ong rong -> chi zoom vao duoc (v63: kem canh bao net)
   applyZoom();
 }
 function applyZoom(){
@@ -580,18 +582,49 @@ function tiengTach(){
     o.connect(g);g.connect(_ac.destination);o.start(t);o.stop(t+0.08);
   }catch(e){}
 }
+// v63: CHUP ANH THAT full cam bien (Android/Chrome co ImageCapture.takePhoto).
+// An toan chieu anh: chi dung khi anh chup ra CUNG chieu (doc/ngang) voi khung video
+// sau khi da ap EXIF — lech chieu / loi / cham qua 1.8s -> tra null, dung cach cu grabUpright.
+let _ic=null,_icTrack=null;
+async function grabPhotoHi(){
+  try{
+    if(!window.ImageCapture||!camTrack||camTrack.readyState!=='live') return null;
+    if(!_ic||_icTrack!==camTrack){_ic=new ImageCapture(camTrack);_icTrack=camTrack;}
+    const blob=await Promise.race([_ic.takePhoto(),new Promise(function(_,j){setTimeout(function(){j('cham');},1800);})]);
+    const bm=await createImageBitmap(blob);
+    const v=$('vid');
+    if(!v.videoWidth||((bm.width>bm.height)!==(v.videoWidth>v.videoHeight))){try{bm.close();}catch(_e){} return null;}
+    const vw=bm.width,vh=bm.height;
+    const uiLandscape=window.innerWidth>window.innerHeight;
+    const ang=uiLandscape?0:effAng();
+    const c=document.createElement('canvas');
+    if(ang===0){ c.width=vw; c.height=vh; c.getContext('2d').drawImage(bm,0,0); }
+    else if(ang===180){
+      c.width=vw; c.height=vh;
+      const x=c.getContext('2d');
+      x.translate(c.width/2,c.height/2); x.rotate(Math.PI); x.drawImage(bm,-vw/2,-vh/2);
+    }
+    else{
+      c.width=vh; c.height=vw;
+      const x=c.getContext('2d');
+      x.translate(c.width/2,c.height/2); x.rotate(ang*Math.PI/180); x.drawImage(bm,-vw/2,-vh/2);
+    }
+    try{bm.close();}catch(_e){}
+    return c;
+  }catch(e){return null;}
+}
 let _snapBusy=false;
 async function snap(){
   if(_snapBusy) return;
   _snapBusy=true;
   try{
-  const S=grabUpright(); if(!S)return;      // khung hinh DA XOAY DUNG CHIEU (cam ngang van ra anh dung)
+  const S=(await grabPhotoHi())||grabUpright(); if(!S)return;   // v63: uu tien ANH THAT full cam bien; khong duoc thi ve khung video nhu cu (DA XOAY DUNG CHIEU)
   const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
   /*full-frame: khong cat 4:3, thu ca khung vua*/
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
-  const sc=Math.min(1,2048/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);
+  const sc=Math.min(1,4096/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);   // v63: tran 4096 (cu 2048) — giu du net cho chu phan
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   const nm=curName();
@@ -1047,7 +1080,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v62-nut-05x';
+const APP_VER='v63-chup-net-cao';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
