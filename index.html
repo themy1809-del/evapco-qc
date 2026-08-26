@@ -414,7 +414,7 @@ async function listCams(){
 async function openCam(){
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
-    let vc={width:{ideal:3264},height:{ideal:2448},aspectRatio:{ideal:4/3}};   // v64: 8MP 4:3 — net hon han v62 (2048) ma khong lag nhu 12MP
+    let vc=res05?{width:{ideal:2048},height:{ideal:1536},aspectRatio:{ideal:4/3}}:{width:{ideal:3264},height:{ideal:2448},aspectRatio:{ideal:4/3}};   // v64: 8MP; v65: che do 0.5x tam ha 2048 (Android chi mo duoc goc rong o do phan giai thap)
     const savedCam=(()=>{try{return localStorage.getItem('ev_camId')||''}catch(e){return ''}})();
     if(camList.length && camList[camPick] && camList[camPick].deviceId) vc.deviceId={exact:camList[camPick].deviceId};
     else if(savedCam) vc.deviceId={ideal:savedCam};   // v59: nho ong kinh da chon lan truoc
@@ -473,7 +473,13 @@ async function switchCam(){
   await openCam();
 }
 // ===== ZOOM BAM DUNG CAMERA CUA MAY (co 0.5x neu may co ong goc rong) =====
-let zoom=1, zCaps=null;
+let zoom=1, zCaps=null, res05=false;
+async function doi05(){   // v65: Android len 8MP -> mat zoom 0.5x; bam 0.5x = tam ha 2048 de may mo lai goc rong
+  res05=true; await openCam();
+  if(zCaps && (zCaps.min||1)<0.9){ zoom=Math.max(zCaps.min,0.5); applyZoom(); toast('0.5x góc rộng (bấm 1x+ để về nét cao)'); }
+  else { res05=false; await openCam(); toast('Máy không có góc siêu rộng'); }
+}
+async function het05(){ res05=false; await openCam(); toast('Đã về 1x nét cao'); }
 function detectZoom(){
   zCaps=null; zoom=1;
   try{var caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
@@ -510,6 +516,14 @@ function buildPresets(){   // nut nhanh 0.5x / 1x / 2x theo dung kha nang may
   if(uw>=0 && !(zCaps&&mn<=0.5+1e-6)){
     var b5b=document.createElement('button'); b5b.textContent='0.5x'; b5b.dataset.lens='1';
     b5b.onclick=function(){chonLens(uw);}; box.appendChild(b5b);
+  }
+  // v65: Android khong co ong UW rieng + do phan giai cao lam zoom.min>=1 -> nut 0.5x tu ha 2048
+  if(res05){
+    var bR=document.createElement('button'); bR.textContent='1x+'; bR.dataset.lens='1';
+    bR.onclick=function(){het05();}; box.appendChild(bR);
+  } else if(uw<0 && !(zCaps&&mn<1)){
+    var b5c=document.createElement('button'); b5c.textContent='0.5x'; b5c.dataset.lens='1';
+    b5c.onclick=function(){doi05();}; box.appendChild(b5c);
   }
   if(!zCaps) return;
   var mx=zCaps.max||1, want=[0.5,1,2,3];
@@ -1080,7 +1094,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v64-net-cao-het-lag';
+const APP_VER='v65-05x-android';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
