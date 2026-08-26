@@ -473,22 +473,52 @@ async function switchCam(){
   await openCam();
 }
 // ===== ZOOM BAM DUNG CAMERA CUA MAY (co 0.5x neu may co ong goc rong) =====
-let zoom=1, zCaps=null, res05=false;
-async function doi05(){   // v65: Android len 8MP -> mat zoom 0.5x; bam 0.5x = tam ha 2048 de may mo lai goc rong
-  res05=true; await openCam();
-  if(zCaps && (zCaps.min||1)<0.9){ zoom=Math.max(zCaps.min,0.5); applyZoom(); toast('0.5x góc rộng (bấm 1x+ để về nét cao)'); }
-  else { res05=false; await openCam(); toast('Máy không có góc siêu rộng'); }
+let zoom=1, zCaps=null, res05=false, z05Muon=0, _g05=null;
+// v66: ap zoom co CHO + KIEM TRA lai (Android hay bo qua lan ap dau tien)
+async function apZoom(z){
+  if(!camTrack||!camTrack.applyConstraints) return false;
+  try{ await camTrack.applyConstraints({advanced:[{zoom:z}]}); }
+  catch(e){ try{ await camTrack.applyConstraints({zoom:z}); }catch(e2){ return false; } }
+  try{ var s=camTrack.getSettings?camTrack.getSettings():{}; if(s.zoom!=null) return Math.abs(s.zoom-z)<0.15; }catch(e){}
+  return true;
 }
-async function het05(){ res05=false; await openCam(); toast('Đã về 1x nét cao'); }
+// v66: GIU 0.5x — Android tu keo ve 1x sau vai giay -> canh va ep lai
+function giu05(){
+  if(_g05){clearInterval(_g05);_g05=null;}
+  _g05=setInterval(function(){
+    if(!res05||!z05Muon){return;}
+    if(!camTrack||camTrack.readyState!=='live'){return;}
+    try{ var s=camTrack.getSettings?camTrack.getSettings():{};
+      if(s.zoom!=null && Math.abs(s.zoom-z05Muon)>0.15){ zoom=z05Muon; apZoom(z05Muon); }
+    }catch(e){}
+  },900);
+}
+async function doi05(){   // v65: Android len 8MP -> mat zoom 0.5x; bam 0.5x = tam ha 2048 de may mo lai goc rong
+  res05=true; z05Muon=0; await openCam();
+  // v66: kha nang zoom cua Android chi hien ra sau khi luong on dinh -> do lai vai lan
+  for(var i=0;i<6 && !(zCaps&&(zCaps.min||1)<0.9);i++){
+    await new Promise(function(r){setTimeout(r,350);});
+    detectZoom();
+  }
+  if(zCaps && (zCaps.min||1)<0.9){
+    z05Muon=Math.max(zCaps.min,0.5); zoom=z05Muon; applyZoom();
+    await apZoom(z05Muon); giu05(); buildPresets();
+    toast('0.5x góc rộng (bấm 1x+ để về nét cao)');
+  }
+  else { res05=false; z05Muon=0; await openCam(); toast('Máy không có góc siêu rộng'); }
+}
+async function het05(){ res05=false; z05Muon=0; if(_g05){clearInterval(_g05);_g05=null;} await openCam(); toast('Đã về 1x nét cao'); }
 function detectZoom(){
   zCaps=null; zoom=1;
   try{var caps=camTrack.getCapabilities?camTrack.getCapabilities():{};
     if(caps.zoom && caps.zoom.max>caps.zoom.min){ zCaps=caps.zoom;
       var mn=caps.zoom.min||1, mx=caps.zoom.max||1;
       zoom=(mn<=1&&mx>=1)?1:mn;   // mo o 1x binh thuong; bam - de xuong 0.5x (neu may cho phep)
+      if(res05 && z05Muon && mn<=z05Muon+1e-6) zoom=z05Muon;   // v66: mo lai camera van GIU 0.5x
     }
   }catch(_){}
   buildPresets(); applyZoom();
+  if(res05 && z05Muon) apZoom(z05Muon);   // v66: ep lai sau moi lan mo lai camera
 }
 function timLensUW(){   // v62: tim ong kinh GOC SIEU RONG mat sau (iPhone: "Back Ultra Wide Camera" / "Camera mat sau goc sieu rong")
   return camList.findIndex(function(d){var l=(d.label||'').toLowerCase();
@@ -529,10 +559,11 @@ function buildPresets(){   // nut nhanh 0.5x / 1x / 2x theo dung kha nang may
   var mx=zCaps.max||1, want=[0.5,1,2,3];
   want.filter(function(z){return z>=mn-1e-6 && z<=mx+1e-6;}).forEach(function(z){
     var b=document.createElement('button'); b.textContent=(z<1?String(z):z.toFixed(0))+'x';
-    b.onclick=function(){zoom=z;applyZoom();}; box.appendChild(b);
+    b.onclick=function(){zoom=z; if(res05&&z05Muon&&Math.abs(z-z05Muon)>0.05)z05Muon=0; applyZoom();}; box.appendChild(b);
   });
 }
 function zoomBy(dir){
+  if(res05&&z05Muon)z05Muon=0;   // v66: nguoi dung tu chinh zoom -> thoi ep giu 0.5x
   if(zCaps){var st=zCaps.step||((zCaps.max-zCaps.min)/10)||0.1; zoom=Math.min(zCaps.max,Math.max(zCaps.min,+(zoom+dir*st).toFixed(3)));}
   else{zoom=Math.min(4,Math.max(1,+(zoom+dir*0.5).toFixed(2)));
     if(zoom>1.4&&!window._zoomCanhBao){window._zoomCanhBao=1;setTimeout(function(){toast('🔍 Zoom số làm GIẢM NÉT — muốn thấy rõ số đo hãy LẠI GẦN');},250);}
@@ -1094,7 +1125,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v65-05x-android';
+const APP_VER='v66-giu-05x';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
