@@ -60,7 +60,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 #clrBtn{margin:0 14px calc(14px + env(safe-area-inset-bottom,0));padding:12px;border:0;border-radius:12px;background:#3a2630;color:#f5cfd8;font-size:13px;font-weight:700}
 .upok{position:absolute;top:6px;right:6px;background:#16a34a;color:#fff;border-radius:10px;padding:2px 7px;font-size:12px;font-weight:700}
 .uppend{position:absolute;top:6px;right:6px;background:#d97706;color:#fff;border-radius:10px;padding:2px 7px;font-size:12px;font-weight:700}
-#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:#111e;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:#111e;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 /* ===== v29 PRO look ===== */
 .hero{background:linear-gradient(135deg,#1F4E78,#2f6ba3);border-radius:18px;padding:20px 16px;margin-bottom:16px;color:#fff;position:relative;box-shadow:0 6px 18px #0006}
@@ -139,7 +139,7 @@ button:active{transform:scale(.95)}
 </section>
 
 <section id="cam" class="hide">
-  <video id="vid" autoplay playsinline muted onclick="tapFocus(event)"></video>
+  <video id="vid" autoplay playsinline muted onclick="if(_natOpen&&_natMoLai){_natMoLai();return;}tapFocus(event)"></video>
   <div id="gridOv"></div>
   <div id="flash"></div>
   <div id="fring"></div>
@@ -164,7 +164,7 @@ button:active{transform:scale(.95)}
   <div id="fhint">Chạm vào hình để lấy nét</div>
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
-    <button id="shoot" onclick="snap()"></button>
+    <button id="shoot" onclick="snap(false,event)"></button>
     <button id="natBtn" onclick="chupGoc()" title="Mở camera gốc của máy — nét nhất, có góc rộng 0.5x nếu máy hỗ trợ" style="min-width:64px;height:52px;border-radius:14px;border:0;background:#0f766e;color:#fff;font-size:13px;font-weight:800;padding:0 10px;line-height:1.1">📸<br>Máy gốc</button>
     <button id="doneBtn" onclick="openLib()">Xong</button>
   </div>
@@ -300,7 +300,7 @@ setTimeout(function(){
   }catch(e){}
 },300);
 function saveState(){
-  try{localStorage.setItem('ev_state',JSON.stringify({sec:SEC(),pair:PAIR(),tIdx:tIdx,pos:pos}));}catch(e){}
+  try{localStorage.setItem('ev_state',JSON.stringify({sec:SEC(),pair:PAIR(),tIdx:tIdx,pos:pos,keys:TYPES.map(t=>t.k)}));}catch(e){}
 }
 // may cu con luu link Drive cu -> tu chuyen sang link moi (v3, co action=pairs)
 if(($('iDrive').value||'').indexOf('AKfycbxIg3W')>=0){$('iDrive').value='';localStorage.removeItem('ev_iDrive');}
@@ -388,6 +388,7 @@ function grabUpright(){
   return c;
 }
 function start(){
+  _vScope=null;
   if(!SEC()||!PAIR()){alert('Nhập Section và PAIR trước.');return;}
   if(!USER()){alert('Nhập TÊN NGƯỜI CHỤP (làm việc nhóm cần biết ảnh của ai).');return;}
   // iPhone: xin quyen cam bien NGAY trong cu cham (iOS bat buoc) — de nhan biet cam ngang
@@ -402,9 +403,17 @@ function start(){
   try{
     const st=JSON.parse(localStorage.getItem('ev_state')||'null');
     if(st&&st.sec===SEC()&&st.pair===PAIR()){
-      // v67: danh sach loai diem da doi (bo Point/Map) -> chi khoi phuc khi CUNG so loai, tranh tro sai loai / treo
-      if(Array.isArray(st.pos)&&st.pos.length===pos.length){ pos=st.pos; if(typeof st.tIdx==='number'&&st.tIdx>=0&&st.tIdx<TYPES.length) tIdx=st.tIdx; }
-      else tIdx=0;
+      // v67: khoi phuc THEO KHOA loai (TT/L/A/...) — danh sach loai da doi (bo Point/Map), v66 luu theo so thu tu 13 loai
+      const V66=['TT','L','A','PL','B','P','G','BV','MK','MAP','PART','TH','PS'];
+      const src=Array.isArray(st.keys)?st.keys:(Array.isArray(st.pos)&&st.pos.length===V66.length?V66:null);
+      if(src&&Array.isArray(st.pos)){
+        pos=TYPES.map(t=>{const j=src.indexOf(t.k),o=j>=0?st.pos[j]:null;
+          const n={num:1,mk:0,txt:''}; if(!o) return n;
+          n.num=(+o.num>0)?+o.num:1; n.mk=(+o.mk>=0&&+o.mk<((t.list||[]).length||1))?+o.mk:0; n.txt=o.txt||'';
+          if(t.k==='G'&&!st.keys){const g=parseInt(o.txt,10); if(g>0)n.num=g; n.txt='';}   // v66: Gap la o GO so -> chuyen sang so ‹ ›
+          return n;});
+        const k=src[st.tIdx], i=TYPES.findIndex(t=>t.k===k); tIdx=i>=0?i:0;
+      } else tIdx=0;
     }else{
       // v54: DOI Section/PAIR -> man hinh lam moi hoan toan (het canh "doi pair ma so van cu")
       tIdx=0; pos=TYPES.map(()=>({num:1,mk:0,txt:''}));
@@ -488,7 +497,9 @@ async function listCams(){
   try{const ds=await navigator.mediaDevices.enumerateDevices();camList=ds.filter(d=>d.kind==='videoinput');
     $('camBtn').style.display=camList.length>1?'':'none';}catch(e){}
 }
+let _camGen=0,_camBusyN=0;   // v67: moi lan mo camera co so the he; lan mo cu xong sau -> tu tat luong cua no (khong ro ri)
 async function openCam(){
+  const gen=++_camGen; _camBusyN++;
   try{
     if(camStream){camStream.getTracks().forEach(t=>t.stop());}
     let vc=res05?{width:{ideal:2048},height:{ideal:1536},aspectRatio:{ideal:4/3}}:{width:{ideal:3264},height:{ideal:2448},aspectRatio:{ideal:4/3}};   // v64: 8MP; v65: che do 0.5x tam ha 2048 (Android chi mo duoc goc rong o do phan giai thap)
@@ -496,7 +507,9 @@ async function openCam(){
     if(camList.length && camList[camPick] && camList[camPick].deviceId) vc.deviceId={exact:camList[camPick].deviceId};
     else if(savedCam) vc.deviceId={ideal:savedCam};   // v59: nho ong kinh da chon lan truoc
     else vc.facingMode='environment';
-    camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
+    const _st=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
+    if(gen!==_camGen){ _st.getTracks().forEach(t=>{try{t.stop();}catch(e){}}); return; }   // da co lan mo moi hon
+    camStream=_st;
     $('vid').srcObject=camStream; camTrack=camStream.getVideoTracks()[0];
     try{$('vid').play().catch(()=>{});}catch(_){}   // v67: ep phat lai (iOS/Android sau khi quay lai tu app khac hay de man DEN)
     try{showRestart(false);}catch(_){}
@@ -518,7 +531,8 @@ async function openCam(){
     setTimeout(updTorchBtn,700);
     try{getWake();updGridBtn();}catch(_){}
     try{$('vid').onresize=updRes; setTimeout(updRes,800);}catch(_){}   // hien nut den pin neu camera ho tro
-  }catch(e){ try{showRestart(true);}catch(_){} if(!_camQuiet) alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.'); }
+  }catch(e){ if(gen===_camGen){ try{showRestart(true);}catch(_){} if(!_camQuiet) alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.'); } }
+  finally{ _camBusyN--; }
 }
 // ===== DEN PIN camera (xuong toi trong xuong) =====
 let torchOn=false;
@@ -666,7 +680,7 @@ function applyZoom(){
 }
 (function(){var d0=0;function dst(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
   document.addEventListener('touchstart',function(e){if(e.touches.length===2)d0=dst(e.touches);},{passive:true});
-  document.addEventListener('touchmove',function(e){if(e.touches.length===2&&d0){var d=dst(e.touches);if(Math.abs(d-d0)>18){zoomBy(d>d0?1:-1);d0=d;}}},{passive:true});
+  document.addEventListener('touchmove',function(e){if(e.touches.length===2&&d0&&typeof camOnScreen==='function'&&camOnScreen()){var d=dst(e.touches);if(Math.abs(d-d0)>18){zoomBy(d>d0?1:-1);d0=d;}}},{passive:true});
 })();
 async function tapFocus(e){
   const fr=$('fring');fr.style.left=e.clientX+'px';fr.style.top=e.clientY+'px';
@@ -778,7 +792,7 @@ function chupGoc(){
   camStream=null; camTrack=null;
   const inp=$('natIn'); inp.value='';
   let xong=false;
-  _natOpen=true;
+  _natOpen=true; _natT=Date.now(); _snapQ=0;
   const moLai=()=>{ if(xong) return; xong=true; _natOpen=false; setTimeout(()=>{ if(!$('cam').classList.contains('hide') && camDead()) openCamSafe(true); },400); };
   _natMoLai=moLai;
   inp.onchange=async()=>{
@@ -795,18 +809,20 @@ function chupGoc(){
   inp.click();
 }
 // ===== v67: CHONG MAN HINH DEN — tu phat hien camera tat / dung hinh va tu mo lai =====
-let _natOpen=false,_natMoLai=null,_camOpening=false,_camQuiet=false,_deadN=0,_quietTry=0;
-function camDead(){ const v=$('vid'); return !camStream||!camTrack||camTrack.readyState!=='live'||!v||v.readyState<2; }
+let _natOpen=false,_natMoLai=null,_natT=0,_camQuiet=false,_deadN=0,_quietTry=0;
+function camDead(){ const v=$('vid'); return !camStream||!camTrack||camTrack.readyState!=='live'||camTrack.muted||!v||v.readyState<2; }   // muted: iOS hay de hinh DEN du track van 'live'
 function showRestart(on){ const b=$('camRestart'); if(b) b.style.display=on?'block':'none'; }
 async function openCamSafe(quiet){
-  if(_camOpening) return;
-  _camOpening=true; _camQuiet=!!quiet;
-  try{ await openCam(); }finally{ _camOpening=false; _camQuiet=false; }
+  if(_camBusyN>0) return;
+  _camQuiet=!!quiet;
+  try{ await openCam(); }finally{ _camQuiet=false; }
   if(!quiet) _quietTry=0;
 }
 async function camCheck(){
   if($('cam').classList.contains('hide')||!$('lib').classList.contains('hide')) return;   // khong o man camera
-  if(_natOpen||_camOpening||_snapBusy||document.visibilityState!=='visible') return;
+  // camera goc mo qua 60s ma khong co su kien tra ve (trinh duyet cu) -> tu mo lai camera app
+  if(_natOpen && !_snapBusy && Date.now()-_natT>60000 && document.hasFocus() && _natMoLai){ _natMoLai(); return; }
+  if(_natOpen||_camBusyN>0||_snapBusy||document.visibilityState!=='visible') return;
   const v=$('vid');
   if(camStream&&v&&v.paused){ try{await v.play();}catch(e){} }
   if(!camDead()){ _deadN=0; _quietTry=0; showRestart(false); return; }
@@ -841,9 +857,13 @@ function updRes(){
   el.style.background=mp<3?'rgba(185,28,28,.9)':'rgba(0,0,0,.6)';
 }
 
-let _snapQ=0;   // v67: bam trong luc dang luu anh truoc -> XEP HANG chup tiep (truoc day mat lan bam, khong bao)
-async function snap(){
+let _snapQ=0,_lastShot=0;   // v67: bam trong luc dang luu anh truoc -> XEP HANG chup tiep (truoc day mat lan bam, khong bao)
+function camOnScreen(){ return !$('cam').classList.contains('hide') && $('lib').classList.contains('hide') && !document.getElementById('missOv'); }
+async function snap(fromQ,ev){
+  if(!camOnScreen()){ _snapQ=0; return; }   // da roi man chup -> khong chup nua
+  if(!fromQ){ const now=(ev&&ev.timeStamp)?ev.timeStamp:performance.now(); if(now-_lastShot<220&&now>=_lastShot) return; _lastShot=now; }   // tinh theo LUC CHAM (khong bi tre khi may ban)   // cham DUP vo tinh = 1 anh
   if(_snapBusy){ if(_snapQ<3 && !_natOpen) _snapQ++; return; }
+  { const t=curType(),tg=tgOf(t.k); if(t.kind==='num'&&t.per&&tg&&pos[tIdx].num>=tg&&baseCount(curBase())>=t.per){ toast('✅ Đã đủ tới điểm cuối '+curBase()+' / tổng '+tg+' — bấm ‹ › nếu cần, hoặc 📋 Kiểm thiếu'); return; } }
   _snapBusy=true;
   try{
   const S=await grabSharp(); if(!S)return;   // v67: chon khung NET nhat trong 3 khung (tat duoc o trang dau). v64: BO cho takePhoto (lag/khung tren nhieu may) — chup ngay tu khung video do net cao (DA XOAY DUNG CHIEU)
@@ -857,7 +877,7 @@ async function snap(){
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   try{S.width=0;}catch(_){}   // nha RAM khung goc
   await luuAnh(c,big);
-  }finally{ _snapBusy=false; if(_snapQ>0){ _snapQ--; setTimeout(snap,0); } }
+  }finally{ _snapBusy=false; if(_snapQ>0){ _snapQ--; setTimeout(()=>snap(true),0); } }
 }
 // v67: LUU 1 ANH da xu ly (dung chung cho nut chup trong app va camera goc cua may) — noi dung giu nguyen nhu v66
 async function luuAnh(c,big){
@@ -930,6 +950,7 @@ function missReport(sec,pair){
   return {R:R,total:Object.values(bases).reduce((a,b)=>a+b,0)};
 }
 function checkMissing(){
+  _snapQ=0;
   const sec=_vScope?_vScope.s:SEC(), pair=_vScope?_vScope.p:PAIR();
   const canJump=!_vScope;   // dang xem PAIR cu thi chi xem, khong nhay camera
   const rep=missReport(sec,pair);
@@ -974,12 +995,13 @@ function jumpTo(k,v){
   const i=TYPES.findIndex(t=>t.k===k); if(i<0)return;
   const t=TYPES[i], p=pos[i];
   if(t.kind==='num'&&v!=='') p.num=Math.max(1,parseInt(v,10)||1);
-  else if(t.kind==='list'){const j=t.list.indexOf(String(v)); if(j>=0)p.mk=j; else toast('Vị trí '+k+v+' không có trong nút chụp — chụp rồi đổi tên trong thư viện');}
+  let warned=false;
+  if(t.kind==='list'){const j=t.list.indexOf(String(v)); if(j>=0)p.mk=j; else {warned=true; setTimeout(()=>toast('Vị trí '+k+v+' không có trong nút chụp — chụp rồi đổi tên trong thư viện'),300);}}
   else if(t.kind==='freepos'&&v!=='') p.txt=String(v);
   tIdx=i; saveState();
   if(!$('lib').classList.contains('hide')) closeLib();
   if($('cam').classList.contains('hide')) start(); else syncUI();
-  setTimeout(()=>toast('→ Chụp '+curBase()),300);
+  if(!warned) setTimeout(()=>toast('→ Chụp '+curBase()),300);
 }
 let libFilter='all';
 let libScope='pair';   // v35: mac dinh CHI hien anh PAIR dang lam -> thu vien nhe, het treo
@@ -1080,6 +1102,7 @@ async function syncFromDrive(silent){
   }catch(e){ if(!silent)toast('Lỗi đọc Drive'); }
 }
 function openLib(){
+  _snapQ=0;
   try{$('vid').pause();}catch(e){}   // v36: chi TAM DUNG khung hinh (khong tat track -> het man den)
   try{ syncFromDrive(true); }catch(e){}   // mo thu vien la tu keo danh sach Drive ve (biet da chup gi)
   if(!document.getElementById('fAll')){
@@ -1110,6 +1133,7 @@ function openLib(){
 }
 function goHome(){   // ve TRANG DAU (setup): tat camera cho nhe may, giu nguyen anh da chup
   _snapQ=0;   // v67: bo cac lan bam dang xep hang khi roi man chup
+  _vScope=null;   // v67: thoat che do xem PAIR cu (truoc day Kiem thieu van hien PAIR cu)
   try{ if(camStream) camStream.getTracks().forEach(function(t){try{t.stop();}catch(e){}}); }catch(e){}
   camStream=null; camTrack=null;
   try{$('vid').pause();}catch(e){}
@@ -1117,6 +1141,7 @@ function goHome(){   // ve TRANG DAU (setup): tat camera cho nhe may, giu nguyen
   try{relWake();updStats();}catch(_){}
 }
 function closeLib(){
+  _snapQ=0;
   if(_vScope){                       // v42: dang xem PAIR CU -> dong la ve MAN HINH DAU (khong dung cham pair dang lam)
     _vScope=null; _rgSeq++;
     document.getElementById('grid').innerHTML='';
@@ -1130,7 +1155,8 @@ function closeLib(){
   setTimeout(function(){
     try{
       var v=$('vid');
-      if(!camStream||!camTrack||camTrack.readyState!=='live'||(v&&v.readyState<2)) openCam();
+      if($('cam').classList.contains('hide')) return;   // v67: da ve trang dau -> khong mo lai camera
+      if(!camStream||!camTrack||camTrack.readyState!=='live'||(v&&v.readyState<2)) openCamSafe(false);
     }catch(e){}
   },700);
   _rgSeq++;                      // huy dot ve dang cho (neu co)
@@ -1199,7 +1225,7 @@ async function viewPhoto(i){
       +'<button onclick="delFromView()" style="flex:1;background:#dc2626;color:#fff;border:0;border-radius:12px;padding:14px;font-weight:800">🗑 Xoá — chụp lại</button>'
       +'<button onclick="viewStep(1)" style="flex:0 0 64px;background:#334155;color:#fff;border:0;border-radius:12px;font-size:24px;font-weight:800">›</button></div>';
     document.body.appendChild(ov);
-    // v67: vuot trai/phai de xem anh truoc/sau (1 ngon; 2 ngon de phong to)
+    // v67: vuot trai/phai de xem anh truoc/sau
     let x0=null;
     ov.addEventListener('touchstart',e=>{x0=(e.touches.length===1)?e.touches[0].clientX:null;},{passive:true});
     ov.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>70)viewStep(dx<0?1:-1);},{passive:true});
@@ -1454,7 +1480,7 @@ function updGridBtn(){
   let b=document.getElementById('gridBtn');
   if(!b){
     b=document.createElement('button'); b.id='gridBtn'; b.textContent='#';
-    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 244px);right:10px;z-index:60;width:42px;height:42px;border:0;border-radius:12px;color:#fff;font-size:20px;font-weight:900';
+    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 256px);left:10px;z-index:60;width:42px;height:42px;border:0;border-radius:12px;color:#fff;font-size:20px;font-weight:900';
     b.onclick=function(){const on=!$('gridOv').classList.contains('on');try{localStorage.setItem('ev_grid',on?'1':'0');}catch(e){}updGridBtn();toast(on?'Bật lưới căn khung':'Tắt lưới');};
     $('cam').appendChild(b);
   }
