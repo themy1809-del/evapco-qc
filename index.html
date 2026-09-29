@@ -15,33 +15,50 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .fld input{width:100%;padding:13px;border-radius:12px;border:1px solid #2b3b52;background:#16233a;color:#fff;font-size:17px}
 .big{width:100%;padding:16px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:18px;font-weight:800;margin-top:10px}
 .note{font-size:12px;color:#7f93a8;margin-top:14px;line-height:1.6}
-#cam{position:fixed;inset:0;background:#000;z-index:1}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
-#vid{width:100%;height:100%;object-fit:contain;background:#000}   /* v41: NHIN DUNG = LUU DUNG khung, khong phong to gia */
+#cam{position:fixed;inset:0;background:#000;z-index:1;display:flex;flex-direction:column}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
+#vwrap{position:relative;flex:1;min-height:0;overflow:hidden}
+#vid{width:100%;height:100%;object-fit:contain;background:#000;display:block}   /* v41: NHIN DUNG = LUU DUNG khung, khong phong to gia */
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
-#fring{position:fixed;width:72px;height:72px;border:3px solid #ffcf33;border-radius:50%;margin:-36px 0 0 -36px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:5}
+#fring{position:fixed;width:72px;height:72px;border:3px solid #ffcf33;border-radius:50%;margin:-36px 0 0 -36px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:9}
+#fring.ok{border-color:#4ade80}
+#fring.no{border-color:#94a3b8}
 #fring.on{opacity:1;transform:scale(.78)}
-#topbar{position:absolute;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top,0)) 8px 8px;background:linear-gradient(#000b,transparent);z-index:4}
+#topbar{flex:0 0 auto;padding:calc(6px + env(safe-area-inset-top,0)) 8px 6px;background:#000;z-index:4}
 #types{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
 #types::-webkit-scrollbar{display:none}
 #types button{flex:0 0 auto;padding:7px 13px;border-radius:18px;border:1px solid #ffffff44;background:#ffffff22;color:#fff;font-size:14px;font-weight:700;white-space:nowrap}
 #types button.on{background:#1a73e8;border-color:#1a73e8}
-#ptrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px}
+#ptrow{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
 #ptrow button{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:26px;font-weight:800}
-#ptlbl{min-width:130px;text-align:center;font-size:22px;font-weight:800}
+#ptlbl{min-width:110px;text-align:center;font-size:22px;font-weight:800}
 #ptTxt{width:120px;text-align:center;font-size:20px;font-weight:800;border:0;border-bottom:2px solid #fff;background:transparent;color:#fff;outline:none}
 #ptTxt::placeholder{color:#ffffff8c;font-size:15px}
 #ptcnt{font-size:14px;color:#ffd23f;font-weight:700;margin-left:8px}
-#fhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0));color:#fff;background:#0007;font-size:12px;padding:5px 12px;border-radius:14px;z-index:3}
-#camBtn{width:46px;height:46px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:22px}
-#zoomctl{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
-#zoomctl button{width:44px;height:44px;border-radius:50%;border:0;background:#0008;color:#fff;font-size:22px;font-weight:800}
-#zpre{display:flex;flex-direction:column;gap:6px}
-#zpre button{width:44px;height:32px;border-radius:12px;border:0;background:#0008;color:#fff;font-size:13px;font-weight:800}
+#zoomctl{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 8px 0;background:#000}
+#zpre{display:flex;gap:8px}
+#zpre button{min-width:46px;height:34px;border-radius:17px;border:0;background:#ffffff1f;color:#fff;font-size:13px;font-weight:800}
 #zpre button.on{background:#1a73e8}
-#zlab{color:#fff;background:#0008;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px}
-#dock{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:14px 22px calc(18px + env(safe-area-inset-bottom,0));background:linear-gradient(transparent,#000a);z-index:4}
+#zlab{color:#ffd23f;font-size:12px;font-weight:800;min-width:34px;text-align:center}
+#dock{flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:10px 22px calc(12px + env(safe-area-inset-bottom,0));background:#000;z-index:4}
+#dock #libBtn{justify-self:start;position:relative}
+#dock #natBtn{justify-self:end;min-width:64px;height:52px;border-radius:14px;border:0;background:#0f766e;color:#fff;font-size:13px;font-weight:800;padding:0 10px;line-height:1.1}
+#libBadge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;padding:0 5px;font-size:11px;font-style:normal;font-weight:800;line-height:20px;color:#fff;display:none}
+#libBadge.pend{display:block;background:#d97706}
+#libBadge.off{display:block;background:#dc2626}
+.ibtn{background:#ffffff26!important;font-size:20px!important}
+#toolBtn.on{background:#1a73e8!important}
+#toolSheet{position:absolute;left:8px;right:8px;bottom:8px;z-index:8;background:#0e1726f2;border:1px solid #2b3b52;border-radius:16px;padding:10px;display:none}
+#toolSheet.on{display:block}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border:0;border-radius:12px;background:#ffffff1a;color:#fff;font-size:20px;font-weight:800}
+.tbtn span{font-size:11px;font-weight:700;line-height:1.2}
+.tbtn.on{background:#1a73e8}
+.tinfo{font-size:12px;color:#cbd5e1;margin-top:8px}
+.tinfo:empty{display:none}
+#rotBadge{position:absolute;top:8px;right:8px;z-index:3;background:#b45309e6;color:#fff;font-size:11px;font-weight:800;padding:4px 8px;border-radius:10px;display:none;pointer-events:none}
+#camRestart{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;padding:18px 22px;border:0;border-radius:16px;background:#1a73e8;color:#fff;font-size:17px;font-weight:800;box-shadow:0 6px 18px #0008}
 #shoot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#1a73e8}
-#libBtn,#doneBtn{min-width:64px;height:52px;border-radius:14px;border:0;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:0 14px}
+#libBtn{min-width:64px;height:52px;border-radius:14px;border:0;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:0 14px}
 #lib{position:fixed;inset:0;background:#0e1726;z-index:10;display:flex;flex-direction:column}
 #lib header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0)) 14px 10px;border-bottom:1px solid #213450}
 #lib header h2{font-size:17px;margin:0;flex:1}
@@ -83,14 +100,11 @@ button:active{transform:scale(.95)}
 #stats .st.warn b{color:#fbbf24}
 #stats .st.ok b{color:#4ade80}
 #stoInfo{font-size:11px;color:#7f93a8;text-align:right;margin-bottom:8px}
-#gridOv{position:absolute;inset:0;pointer-events:none;z-index:2;display:none;
+#gridOv{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:2;display:none;
   background:linear-gradient(to right,transparent calc(33.33% - 1px),#ffffff55 calc(33.33% - 1px),#ffffff55 33.33%,transparent 33.33%,transparent calc(66.66% - 1px),#ffffff55 calc(66.66% - 1px),#ffffff55 66.66%,transparent 66.66%),
   linear-gradient(to bottom,transparent calc(33.33% - 1px),#ffffff55 calc(33.33% - 1px),#ffffff55 33.33%,transparent 33.33%,transparent calc(66.66% - 1px),#ffffff55 calc(66.66% - 1px),#ffffff55 66.66%,transparent 66.66%)}
 #gridOv.on{display:block}
 #gridOv:after{content:'';position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:2px solid #ffcf33;border-radius:50%;box-shadow:0 0 0 1px #0006}
-#netPill{position:fixed;top:calc(env(safe-area-inset-top,0px) + 150px);left:10px;z-index:60;background:rgba(0,0,0,.6);color:#fff;border-radius:12px;padding:5px 10px;font-size:11px;font-weight:800;pointer-events:none}
-#netPill.off{background:rgba(185,28,28,.9)}
-#netPill.pend{background:rgba(180,83,9,.9)}
 #libTools{display:flex;gap:6px;padding:8px 12px 0;flex-wrap:wrap}
 #libTools select,#libTools input{background:#16233a;color:#fff;border:1px solid #2b3b52;border-radius:10px;padding:8px;font-size:14px}
 #libTools input{flex:1;min-width:120px}
@@ -139,37 +153,40 @@ button:active{transform:scale(.95)}
 </section>
 
 <section id="cam" class="hide">
-  <video id="vid" autoplay playsinline muted onclick="if(_natOpen&&_natMoLai){_natMoLai();return;}tapFocus(event)"></video>
-  <div id="gridOv"></div>
-  <div id="flash"></div>
-  <div id="fring"></div>
   <div id="topbar">
     <div id="types"></div>
     <div id="ptrow">
       <button id="ptPrev" onclick="ptMove(-1)">‹</button>
       <span id="ptlbl">A1<span id="ptcnt"></span></span><input id="ptTxt" oninput="ptType()" placeholder="vd 1-4" style="display:none">
       <button id="ptNext" onclick="ptMove(1)">›</button>
-      <button id="camBtn" onclick="switchCam()" title="Đổi camera">🔄</button>
-      <button id="homeBtn" onclick="goHome()" title="Về trang chủ">🏠</button>
+      <button id="missBtn" class="ibtn" onclick="checkMissing()" title="Kiểm thiếu điểm">📋</button>
+      <button id="toolBtn" class="ibtn" onclick="toggleTools()" title="Công cụ">⋯</button>
     </div>
   </div>
-  <div id="zoomctl">
-    <button onclick="zoomBy(1)">＋</button>
-    <span id="zlab">1.0x</span>
-    <button onclick="zoomBy(-1)">－</button>
-    <div id="zpre"></div>
+  <div id="vwrap">
+    <video id="vid" autoplay playsinline muted onclick="if(_natOpen&&_natMoLai){_natMoLai();return;}tapFocus(event)"></video>
+    <div id="gridOv"></div>
+    <div id="flash"></div>
+    <div id="rotBadge"></div>
+    <button id="camRestart" onclick="openCamSafe(false)">📷 Camera đang tắt<br><span style="font-size:13px;font-weight:600">CHẠM để mở lại</span></button>
+    <div id="toolSheet">
+      <div class="tgrid">
+        <button id="homeBtn" class="tbtn" onclick="toggleTools(false);goHome()">🏠<span>Trang đầu</span></button>
+        <button id="camBtn" class="tbtn" onclick="switchCam()">🔄<span>Đổi camera</span></button>
+      </div>
+      <div class="tinfo" id="resChip"></div>
+      <div class="tinfo" id="netLine"></div>
+      <div class="tinfo" id="focusInfo"></div>
+    </div>
   </div>
-  <button id="missBtn" onclick="checkMissing()" title="Kiểm thiếu điểm" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 186px);left:10px;z-index:60;border:0;border-radius:12px;background:rgba(180,83,9,.92);color:#fff;font-size:12px;font-weight:800;padding:8px 10px">📋 Kiểm thiếu</button>
-  <button id="camRestart" onclick="openCamSafe(false)" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;padding:18px 22px;border:0;border-radius:16px;background:#1a73e8;color:#fff;font-size:17px;font-weight:800;box-shadow:0 6px 18px #0008">📷 Camera đang tắt<br><span style="font-size:13px;font-weight:600">CHẠM để mở lại</span></button>
-  <div id="fhint">Chạm vào hình để lấy nét</div>
+  <div id="fring"></div>
+  <div id="zoomctl"><div id="zpre"></div><span id="zlab">1.0x</span></div>
   <div id="dock">
-    <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
+    <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span><i id="libBadge"></i></button>
     <button id="shoot" onclick="snap(false,event)"></button>
-    <button id="natBtn" onclick="chupGoc()" title="Mở camera gốc của máy — nét nhất, có góc rộng 0.5x nếu máy hỗ trợ" style="min-width:64px;height:52px;border-radius:14px;border:0;background:#0f766e;color:#fff;font-size:13px;font-weight:800;padding:0 10px;line-height:1.1">📸<br>Máy gốc</button>
-    <button id="doneBtn" onclick="openLib()">Xong</button>
+    <button id="natBtn" onclick="chupGoc()" title="Mở camera gốc của máy — nét nhất, có góc rộng 0.5x nếu máy hỗ trợ">📸<br>Máy gốc</button>
   </div>
   <input id="natIn" type="file" accept="image/jpeg,image/png" capture="environment" style="display:none">   <!-- v67: chi nhan ANH (khong de "image/*" — vai trinh duyet mo che do QUAY video) -->
-  <div id="resChip" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 222px);left:10px;z-index:60;background:rgba(0,0,0,.6);color:#fff;border-radius:12px;padding:5px 10px;font-size:11px;font-weight:800;pointer-events:none"></div>
 </section>
 
 <section id="lib" class="hide">
@@ -337,17 +354,19 @@ function updRotUI(){
   let b=document.getElementById('rotBtn');
   if(!b){
     b=document.createElement('button'); b.id='rotBtn';
-    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 150px);right:10px;z-index:60;background:rgba(31,78,120,.88);color:#fff;border:0;padding:5px 10px;border-radius:12px;font-weight:800;font-size:11px;max-width:130px';
+    b.className='tbtn';
     b.onclick=function(){
       rotMode = rotMode==='auto' ? 90 : (rotMode===90 ? -90 : (rotMode===-90 ? 180 : (rotMode===180 ? 0 : 'auto')));
       updRotUI();
       toast(rotMode==='auto' ? 'Xoay: TỰ ĐỘNG theo cảm biến' :
             (rotMode===0 ? 'Khoá DỌC' : (rotMode===180 ? 'XOAY 180° — dùng khi ảnh bị lộn ngược' : 'Cầm NGANG — chụp thử 1 tấm, ngược thì bấm tiếp')));
     };
-    document.body.appendChild(b);
+    const g=document.querySelector('#toolSheet .tgrid'); (g||document.body).appendChild(b);
   }
-  b.style.background = effAng()===0 ? 'rgba(31,78,120,.94)' : 'rgba(180,83,9,.94)';
-  b.textContent=rotLabel();
+  b.classList.toggle('on',rotMode!=='auto');
+  b.innerHTML='📐<span>'+esc(rotLabel().replace('📐 ',''))+'</span>';
+  const rb=document.getElementById('rotBadge');   // chi hien nhan nho tren khung khi dang cam NGANG/NGUOC
+  if(rb){ const a=effAng(); rb.style.display=a===0?'none':'block'; rb.textContent=a===180?'↻ NGƯỢC 180°':'↻ NGANG'; }
 }
 function _onDevOri(e){
   if(e.gamma==null||e.beta==null) return;
@@ -447,9 +466,9 @@ function perLimit(){return curType().per||Infinity;}
 function baseCount(b){return photos.filter(p=>p.name.split('.')[0]===b && (p.sec||'')===SEC() && (p.pair||'')===PAIR()).length;}   // v54: dem theo PAIR dang lam
 function curName(){const b=curBase();return b+'.'+(baseCount(b)+1);}
 
-function setType(i){tIdx=i;syncUI();saveState();}
+function setType(i){_snapQ=0;tIdx=i;syncUI();saveState();}
 function ptType(){pos[tIdx].txt=$('ptTxt').value;syncUI();saveState();}
-function ptMove(d){const t=curType(),p=pos[tIdx];
+function ptMove(d){_snapQ=0;const t=curType(),p=pos[tIdx];
   if(t.kind==='num'||t.kind==='pair')p.num=Math.max(1,p.num+d);
   else if(t.kind==='list')p.mk=Math.max(0,Math.min(t.list.length-1,p.mk+d));
   syncUI();saveState();}
@@ -530,7 +549,7 @@ async function openCam(){
     detectZoom();
     setTimeout(updTorchBtn,700);
     try{getWake();updGridBtn();}catch(_){}
-    try{$('vid').onresize=updRes; setTimeout(updRes,800);}catch(_){}   // hien nut den pin neu camera ho tro
+    try{$('vid').onresize=()=>{updRes();fitOv();}; setTimeout(()=>{updRes();fitOv();},800);}catch(_){}   // hien nut den pin neu camera ho tro
   }catch(e){ if(gen===_camGen){ try{showRestart(true);}catch(_){} if(!_camQuiet) alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.'); } }
   finally{ _camBusyN--; }
 }
@@ -539,13 +558,12 @@ let torchOn=false;
 function updTorchBtn(){
   let b=document.getElementById('torchBtn');
   if(!b){
-    b=document.createElement('button'); b.id='torchBtn'; b.textContent='🔦';
-    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 196px);right:10px;z-index:60;width:42px;height:42px;border:0;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:18px;display:none';
-    b.onclick=toggleTorch; document.body.appendChild(b);
+    b=document.createElement('button'); b.id='torchBtn'; b.className='tbtn'; b.innerHTML='🔦<span>Đèn</span>'; b.style.display='none';
+    b.onclick=toggleTorch; $('toolSheet').querySelector('.tgrid').appendChild(b);
   }
   try{
     const caps=camTrack&&camTrack.getCapabilities?camTrack.getCapabilities():{};
-    b.style.display=(caps&&caps.torch)?'block':'none';
+    b.style.display=(caps&&caps.torch)?'':'none';
     if(!caps||!caps.torch) torchOn=false;
   }catch(e){b.style.display='none';}
 }
@@ -556,7 +574,7 @@ function toggleTorch(){
     torchOn=!torchOn;
     camTrack.applyConstraints({advanced:[{torch:torchOn}]});
     const b=document.getElementById('torchBtn');
-    if(b)b.style.background=torchOn?'#eab308':'rgba(255,255,255,.15)';
+    if(b)b.classList.toggle('on',torchOn);
     toast(torchOn?'🔦 Bật đèn':'Tắt đèn');
   }catch(e){toast('Không bật được đèn');}
 }
@@ -682,17 +700,53 @@ function applyZoom(){
   document.addEventListener('touchstart',function(e){if(e.touches.length===2)d0=dst(e.touches);},{passive:true});
   document.addEventListener('touchmove',function(e){if(e.touches.length===2&&d0&&typeof camOnScreen==='function'&&camOnScreen()){var d=dst(e.touches);if(Math.abs(d-d0)>18){zoomBy(d>d0?1:-1);d0=d;}}},{passive:true});
 })();
+// v67: vung ANH THAT trong the video (object-fit:contain co vien den) -> cham dung diem tren anh
+function vidRect(){
+  const v=$('vid'),r=v.getBoundingClientRect(),vw=v.videoWidth,vh=v.videoHeight;
+  if(!vw||!vh) return r;
+  const k=Math.min(r.width/vw,r.height/vh),w=vw*k,h=vh*k;
+  return {left:r.left+(r.width-w)/2,top:r.top+(r.height-h)/2,width:w,height:h,right:r.left+(r.width+w)/2,bottom:r.top+(r.height+h)/2};
+}
+function fitOv(){   // luoi can khung phu DUNG vung anh
+  try{ const g=$('gridOv'),w=$('vwrap').getBoundingClientRect(),r=vidRect();
+    g.style.left=(r.left-w.left)+'px'; g.style.top=(r.top-w.top)+'px'; g.style.width=r.width+'px'; g.style.height=r.height+'px'; }catch(e){}
+}
+window.addEventListener('resize',()=>{try{fitOv();}catch(e){}});
+function toggleTools(on){
+  const t=$('toolSheet'); on=(on===undefined)?!t.classList.contains('on'):!!on;
+  t.classList.toggle('on',on); $('toolBtn').classList.toggle('on',on);
+  if(on){ try{updRotUI();updTorchBtn();updGridBtn();updNet();updRes();updFocusInfo();}catch(e){} }
+}
+function focusCaps(){ try{ return camTrack&&camTrack.getCapabilities?camTrack.getCapabilities():{}; }catch(e){ return {}; } }
+function canPointFocus(){ const c=focusCaps(); return ('pointsOfInterest' in c)||((c.focusMode||[]).includes('single-shot')); }
+function updFocusInfo(){
+  const el=document.getElementById('focusInfo'); if(!el) return;
+  el.textContent=canPointFocus()?'🎯 Chạm vào hình để lấy nét đúng điểm đó (vòng XANH = máy đã nhận).'
+    :(IS_IOS?'🎯 iPhone: trình duyệt KHÔNG cho chọn điểm nét — máy tự lấy nét. Chụp cận bị mờ thì LÙI ra ≥ 20 cm rồi bấm 2x, hoặc dùng 📸 Máy gốc (chạm lấy nét được).'
+            :'🎯 Máy này không cho web chọn điểm nét — máy tự lấy nét. Cần nét tuyệt đối thì dùng 📸 Máy gốc.');
+}
+let _focusT=null;
 async function tapFocus(e){
+  if($('toolSheet').classList.contains('on')){ toggleTools(false); return; }   // cham ra ngoai = dong bang Cong cu
+  const r=vidRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;   // cham vao vien den
+  const x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
   const fr=$('fring');fr.style.left=e.clientX+'px';fr.style.top=e.clientY+'px';
-  fr.classList.remove('on');void fr.offsetWidth;fr.classList.add('on');setTimeout(()=>fr.classList.remove('on'),900);
-  if(!camTrack||!camTrack.getCapabilities)return;
-  try{const caps=camTrack.getCapabilities(),r=$('vid').getBoundingClientRect();
-    const x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
-    if(caps.focusMode&&caps.focusMode.includes('manual')){
-      const adv={focusMode:'manual'};if('pointsOfInterest'in caps)adv.pointsOfInterest=[{x,y}];
-      await camTrack.applyConstraints({advanced:[adv]});
-      setTimeout(()=>{try{if(caps.focusMode.includes('continuous'))camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(_){}},2500);
-    }}catch(_){}
+  fr.classList.remove('on','ok','no');void fr.offsetWidth;fr.classList.add('on');
+  const caps=focusCaps(), fm=caps.focusMode||[];
+  // v67: dung chuan W3C — pointsOfInterest + focusMode 'single-shot' (ban cu doi 'manual' nen gan nhu khong may nao chay)
+  const adv={}; let ok=false;
+  if('pointsOfInterest' in caps){ adv.pointsOfInterest=[{x:x,y:y}]; ok=true; }
+  if(fm.includes('single-shot')){ adv.focusMode='single-shot'; ok=true; }
+  else if(adv.pointsOfInterest&&fm.includes('continuous')) adv.focusMode='continuous';
+  if(ok){
+    try{ await camTrack.applyConstraints({advanced:[adv]}); fr.classList.add('ok'); }catch(_){ ok=false; }
+    clearTimeout(_focusT);
+    _focusT=setTimeout(()=>{ try{ if(fm.includes('continuous')) camTrack.applyConstraints({advanced:[{focusMode:'continuous'}]}); }catch(_){} },5000);   // 5s sau tro lai tu dong lay net
+  }
+  if(!ok){ fr.classList.add('no');
+    if(!window._focusTip){ window._focusTip=1; updFocusInfo(); toast(IS_IOS?'iPhone tự lấy nét — chụp cận bị mờ thì lùi ra ≥20cm và bấm 2x':'Máy tự lấy nét (không chọn điểm được)'); } }
+  setTimeout(()=>fr.classList.remove('on'),1100);
 }
 
 function canvasToB64(cv,q){
@@ -853,14 +907,17 @@ function updRes(){
   const el=$('resChip'), v=$('vid'); if(!el) return;
   const w=v.videoWidth,h=v.videoHeight; if(!w){el.textContent='';return;}
   const mp=w*h/1e6;
-  el.textContent='📷 '+Math.max(w,h)+'×'+Math.min(w,h)+' · '+mp.toFixed(1)+'MP'+(mp<3?' — thấp: dùng 📸 Máy gốc':'');
-  el.style.background=mp<3?'rgba(185,28,28,.9)':'rgba(0,0,0,.6)';
+  el.textContent='📷 Độ phân giải camera: '+Math.max(w,h)+'×'+Math.min(w,h)+' · '+mp.toFixed(1)+'MP'+(mp<3?' — THẤP: nên dùng 📸 Máy gốc':'');
+  el.style.color=mp<3?'#fca5a5':'';
+  if(mp<3&&!window._lowResWarn){window._lowResWarn=1;setTimeout(()=>toast('⚠️ Camera chỉ cho '+mp.toFixed(1)+'MP — cần nét thì dùng 📸 Máy gốc'),1500);}
+  fitOv();
 }
 
 let _snapQ=0,_lastShot=0;   // v67: bam trong luc dang luu anh truoc -> XEP HANG chup tiep (truoc day mat lan bam, khong bao)
 function camOnScreen(){ return !$('cam').classList.contains('hide') && $('lib').classList.contains('hide') && !document.getElementById('missOv'); }
 async function snap(fromQ,ev){
-  if(!camOnScreen()){ _snapQ=0; return; }   // da roi man chup -> khong chup nua
+  if(!camOnScreen()){ _snapQ=0; return; }
+  if($('toolSheet').classList.contains('on')) toggleTools(false);   // da roi man chup -> khong chup nua
   if(!fromQ){ const now=(ev&&ev.timeStamp)?ev.timeStamp:performance.now(); if(now-_lastShot<220&&now>=_lastShot) return; _lastShot=now; }   // tinh theo LUC CHAM (khong bi tre khi may ban)   // cham DUP vo tinh = 1 anh
   if(_snapBusy){ if(_snapQ<3 && !_natOpen) _snapQ++; return; }
   { const t=curType(),tg=tgOf(t.k); if(t.kind==='num'&&t.per&&tg&&pos[tIdx].num>=tg&&baseCount(curBase())>=t.per){ toast('✅ Đã đủ tới điểm cuối '+curBase()+' / tổng '+tg+' — bấm ‹ › nếu cần, hoặc 📋 Kiểm thiếu'); return; } }
@@ -992,6 +1049,7 @@ function checkMissing(){
 }
 // v67: nhay camera toi dung LOAI + SO DIEM con thieu
 function jumpTo(k,v){
+  _snapQ=0;
   const i=TYPES.findIndex(t=>t.k===k); if(i<0)return;
   const t=TYPES[i], p=pos[i];
   if(t.kind==='num'&&v!=='') p.num=Math.max(1,parseInt(v,10)||1);
@@ -1102,7 +1160,7 @@ async function syncFromDrive(silent){
   }catch(e){ if(!silent)toast('Lỗi đọc Drive'); }
 }
 function openLib(){
-  _snapQ=0;
+  _snapQ=0; try{toggleTools(false);}catch(e){}
   try{$('vid').pause();}catch(e){}   // v36: chi TAM DUNG khung hinh (khong tat track -> het man den)
   try{ syncFromDrive(true); }catch(e){}   // mo thu vien la tu keo danh sach Drive ve (biet da chup gi)
   if(!document.getElementById('fAll')){
@@ -1218,19 +1276,17 @@ async function viewPhoto(i){
     ov.style.cssText='position:fixed;inset:0;background:#000;z-index:200;display:none;flex-direction:column';
     ov.innerHTML='<div style="color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:800">'
       +'<span id="vwName"></span><button onclick="closeView()" style="background:#334155;color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:800">Đóng ✕</button></div>'
-      +'<div style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center">'
-      +'<img id="vwImg" style="max-width:100%;height:auto"></div>'
+      +'<div id="vwBox" style="flex:1;min-height:0;overflow:hidden;position:relative;touch-action:none;display:flex;align-items:center;justify-content:center">'
+      +'<img id="vwImg" draggable="false" style="max-width:100%;max-height:100%;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-select:none">'
+      +'<div id="vwZ" style="position:absolute;right:10px;top:10px;background:#000a;color:#ffd23f;border-radius:10px;padding:4px 9px;font-size:12px;font-weight:800;pointer-events:none">Chụm 2 ngón / chạm đúp để phóng to</div></div>'
       +'<div style="padding:10px calc(10px + env(safe-area-inset-right,0)) calc(10px + env(safe-area-inset-bottom,0));display:flex;gap:10px">'
       +'<button onclick="viewStep(-1)" style="flex:0 0 64px;background:#334155;color:#fff;border:0;border-radius:12px;font-size:24px;font-weight:800">‹</button>'
       +'<button onclick="delFromView()" style="flex:1;background:#dc2626;color:#fff;border:0;border-radius:12px;padding:14px;font-weight:800">🗑 Xoá — chụp lại</button>'
       +'<button onclick="viewStep(1)" style="flex:0 0 64px;background:#334155;color:#fff;border:0;border-radius:12px;font-size:24px;font-weight:800">›</button></div>';
     document.body.appendChild(ov);
-    // v67: vuot trai/phai de xem anh truoc/sau
-    let x0=null;
-    ov.addEventListener('touchstart',e=>{x0=(e.touches.length===1)?e.touches[0].clientX:null;},{passive:true});
-    ov.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>70)viewStep(dx<0?1:-1);},{passive:true});
+    vzInit(document.getElementById('vwBox'));
   }
-  ov.dataset.idx=i;
+  ov.dataset.idx=i; vzReset();
   const vp=_viewList.indexOf(i);
   document.getElementById('vwName').textContent=p.name+(p.up?'  ·  ✓ Drive':'  ·  ⏳ chưa gửi')+(vp>=0?'  ·  '+(vp+1)+'/'+_viewList.length:'');
   try{
@@ -1242,6 +1298,63 @@ async function viewPhoto(i){
   }catch(e){document.getElementById('vwImg').src='data:image/jpeg;base64,'+b64;}
   ov.style.display='flex';
 }
+// ===== v67: PHONG TO anh khi xem — chum 2 ngon, keo, cham dup; vuot trai/phai (khi chua phong to) de doi anh =====
+const VZ={s:1,x:0,y:0};
+function vzApply(){
+  const im=document.getElementById('vwImg'); if(!im) return;
+  const b=document.getElementById('vwBox').getBoundingClientRect();
+  const mx=Math.max(0,(im.clientWidth*VZ.s-b.width)/2), my=Math.max(0,(im.clientHeight*VZ.s-b.height)/2);   // khong keo anh ra khoi khung
+  VZ.x=Math.max(-mx,Math.min(mx,VZ.x)); VZ.y=Math.max(-my,Math.min(my,VZ.y));
+  im.style.transform='translate('+VZ.x+'px,'+VZ.y+'px) scale('+VZ.s+')';
+  const z=document.getElementById('vwZ'); if(z) z.textContent=VZ.s>1.01?(VZ.s.toFixed(1)+'x · chạm đúp để thu nhỏ'):'Chụm 2 ngón / chạm đúp để phóng to';
+}
+function vzReset(){ VZ.s=1; VZ.x=0; VZ.y=0; vzApply(); }
+function vzZoomAt(ns,cx,cy){   // phong to/thu nho giu nguyen diem (cx,cy) tren man hinh
+  const b=document.getElementById('vwBox').getBoundingClientRect();
+  const px=cx-(b.left+b.width/2), py=cy-(b.top+b.height/2);
+  ns=Math.max(1,Math.min(8,ns));
+  VZ.x=px-(px-VZ.x)*(ns/VZ.s); VZ.y=py-(py-VZ.y)*(ns/VZ.s); VZ.s=ns;
+  if(ns<=1.001){VZ.x=0;VZ.y=0;}
+  vzApply();
+}
+function vzInit(box){
+  let t0=null, lastTap=0, moved=false;
+  const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  box.addEventListener('touchstart',e=>{
+    moved=false;
+    if(e.touches.length===2) t0={pinch:true,d:dist(e.touches),s:VZ.s,m:mid(e.touches),x:VZ.x,y:VZ.y};
+    else if(e.touches.length===1) t0={pinch:false,cx:e.touches[0].clientX,cy:e.touches[0].clientY,x:VZ.x,y:VZ.y};
+  },{passive:true});
+  box.addEventListener('touchmove',e=>{
+    if(!t0) return; e.preventDefault(); moved=true;
+    if(t0.pinch&&e.touches.length===2){
+      const m=mid(e.touches), ns=Math.max(1,Math.min(8,t0.s*dist(e.touches)/t0.d));
+      const b=box.getBoundingClientRect(), cx=b.left+b.width/2, cy=b.top+b.height/2;
+      VZ.s=ns; VZ.x=(m.x-cx)-((t0.m.x-cx)-t0.x)*(ns/t0.s); VZ.y=(m.y-cy)-((t0.m.y-cy)-t0.y)*(ns/t0.s);
+      if(ns<=1.001){VZ.x=0;VZ.y=0;}
+      vzApply();
+    } else if(!t0.pinch&&e.touches.length===1&&VZ.s>1.01){
+      VZ.x=t0.x+(e.touches[0].clientX-t0.cx); VZ.y=t0.y+(e.touches[0].clientY-t0.cy); vzApply();
+    }
+  },{passive:false});
+  box.addEventListener('touchend',e=>{
+    if(!t0) return;
+    const was=t0; if(e.touches.length===0) t0=null; else if(e.touches.length===1){ t0={pinch:false,cx:e.touches[0].clientX,cy:e.touches[0].clientY,x:VZ.x,y:VZ.y}; return; }
+    if(was.pinch) return;
+    const c=e.changedTouches[0], dx=c.clientX-was.cx, dy=c.clientY-was.cy;
+    if(VZ.s<=1.01 && Math.abs(dx)>70 && Math.abs(dx)>Math.abs(dy)){ viewStep(dx<0?1:-1); return; }   // vuot doi anh
+    if(Math.abs(dx)<10&&Math.abs(dy)<10){   // cham dup
+      const now=Date.now();
+      if(now-lastTap<320){ lastTap=0; if(VZ.s>1.01) vzReset(); else vzZoomAt(3,c.clientX,c.clientY); }
+      else lastTap=now;
+    }
+  });
+  box.addEventListener('wheel',e=>{ e.preventDefault(); vzZoomAt(VZ.s*(e.deltaY<0?1.25:0.8),e.clientX,e.clientY); },{passive:false});   // may tinh: lan chuot
+  box.addEventListener('touchstart',()=>{box._lt=Date.now();},{passive:true});
+  box.addEventListener('dblclick',e=>{ if(Date.now()-(box._lt||0)<1000) return;   // dien thoai da xu ly cham dup o tren
+    if(VZ.s>1.01) vzReset(); else vzZoomAt(3,e.clientX,e.clientY); });
+}
 function viewStep(d){
   const ov=document.getElementById('viewOv'); if(!ov)return;
   const k=_viewList.indexOf(+ov.dataset.idx), n=k+d;
@@ -1250,7 +1363,7 @@ function viewStep(d){
 }
 function closeView(){
   const ov=document.getElementById('viewOv'); if(ov)ov.style.display='none';
-  const im=document.getElementById('vwImg'); if(im)im.src='';
+  const im=document.getElementById('vwImg'); if(im)im.src=''; try{vzReset();}catch(e){}
   if(_vwUrl){try{URL.revokeObjectURL(_vwUrl);}catch(e){}_vwUrl=null;}
 }
 function delFromView(){
@@ -1422,7 +1535,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v67-pro';
+const APP_VER='v68-gon';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
@@ -1467,11 +1580,11 @@ function updStats(){
   }).catch(()=>{}); }catch(_){}
 }
 function updNet(){
-  let el=document.getElementById('netPill');
-  if(!el){el=document.createElement('div');el.id='netPill';$('cam').appendChild(el);}
   const pend=photos.filter(p=>!p.up).length, on=navigator.onLine;
-  el.className=!on?'off':(pend?'pend':'');
-  el.textContent=!on?('🔴 Mất mạng'+(pend?' · ⏳'+pend+' chờ gửi':'')):(pend?('⏳ '+pend+' đang gửi…'):'☁️ Drive đủ ✓');
+  const bd=document.getElementById('libBadge');
+  if(bd){ bd.className=!on?'off':(pend?'pend':''); bd.textContent=!on?'!':(pend?String(pend):''); }
+  const nl=document.getElementById('netLine');
+  if(nl) nl.textContent=!on?('🔴 Mất mạng'+(pend?' · ⏳ '+pend+' ảnh chờ gửi':'')+' — ảnh vẫn lưu trong máy'):(pend?('⏳ '+pend+' ảnh đang gửi lên Drive…'):'☁️ Drive: đã gửi đủ ✓');
 }
 window.addEventListener('online',()=>{try{updNet();updStats();}catch(_){}});
 window.addEventListener('offline',()=>{try{updNet();updStats();toast('🔴 Mất mạng — ảnh vẫn lưu trong máy, có mạng sẽ tự gửi');}catch(_){}});
@@ -1479,14 +1592,13 @@ window.addEventListener('offline',()=>{try{updNet();updStats();toast('🔴 Mất
 function updGridBtn(){
   let b=document.getElementById('gridBtn');
   if(!b){
-    b=document.createElement('button'); b.id='gridBtn'; b.textContent='#';
-    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 256px);left:10px;z-index:60;width:42px;height:42px;border:0;border-radius:12px;color:#fff;font-size:20px;font-weight:900';
+    b=document.createElement('button'); b.id='gridBtn'; b.className='tbtn'; b.innerHTML='#<span>Lưới căn</span>';
     b.onclick=function(){const on=!$('gridOv').classList.contains('on');try{localStorage.setItem('ev_grid',on?'1':'0');}catch(e){}updGridBtn();toast(on?'Bật lưới căn khung':'Tắt lưới');};
-    $('cam').appendChild(b);
+    $('toolSheet').querySelector('.tgrid').appendChild(b);
   }
   let on=false; try{on=localStorage.getItem('ev_grid')==='1';}catch(e){}
-  $('gridOv').classList.toggle('on',on);
-  b.style.background=on?'#1a73e8':'rgba(255,255,255,.15)';
+  $('gridOv').classList.toggle('on',on); fitOv();
+  b.classList.toggle('on',on);
 }
 // ===== v67: GIU MAN HINH SANG khi dang o camera (khong tu tat man hinh giua luc do) =====
 let _wake=null;
