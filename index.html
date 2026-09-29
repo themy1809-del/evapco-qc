@@ -131,6 +131,7 @@ button:active{transform:scale(.95)}
     </div></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
+  <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Bevel (BV — vát mép) · Marking · Map · Độ dày.<br>
@@ -164,8 +165,11 @@ button:active{transform:scale(.95)}
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
     <button id="shoot" onclick="snap()"></button>
+    <button id="natBtn" onclick="chupGoc()" title="Mở camera gốc của máy — nét nhất, có góc rộng 0.5x nếu máy hỗ trợ" style="min-width:64px;height:52px;border-radius:14px;border:0;background:#0f766e;color:#fff;font-size:13px;font-weight:800;padding:0 10px;line-height:1.1">📸<br>Máy gốc</button>
     <button id="doneBtn" onclick="openLib()">Xong</button>
   </div>
+  <input id="natIn" type="file" accept="image/*" capture="environment" style="display:none">
+  <div id="resChip" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 222px);left:10px;z-index:60;background:rgba(0,0,0,.6);color:#fff;border-radius:12px;padding:5px 10px;font-size:11px;font-weight:800;pointer-events:none"></div>
 </section>
 
 <section id="lib" class="hide">
@@ -261,6 +265,7 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+try{const cb=$('iBurst');cb.checked=burstOn();cb.onchange=()=>{try{localStorage.setItem('ev_burst',cb.checked?'1':'0');}catch(e){}};}catch(e){}
 try{tgLoadUI();$('iSec').addEventListener('input',tgLoadUI);$('iPair').addEventListener('input',tgLoadUI);
   ['tgA','tgP','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
 try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
@@ -510,7 +515,8 @@ async function openCam(){
     }catch(e){}
     detectZoom();
     setTimeout(updTorchBtn,700);
-    try{getWake();updGridBtn();}catch(_){}   // hien nut den pin neu camera ho tro
+    try{getWake();updGridBtn();}catch(_){}
+    try{$('vid').onresize=updRes; setTimeout(updRes,800);}catch(_){}   // hien nut den pin neu camera ho tro
   }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
 }
 // ===== DEN PIN camera (xuong toi trong xuong) =====
@@ -733,11 +739,82 @@ async function grabPhotoHi(){
   }catch(e){return null;}
 }
 let _snapBusy=false;
+// ===== v67: CHUP NET — lay 3 khung lien tiep, cham do net vung GIUA o do phan giai goc, giu khung net nhat =====
+function burstOn(){try{return localStorage.getItem('ev_burst')!=='0';}catch(e){return true;}}
+let _shc=null;
+function doNet(){   // do net vung giua 320x320 (diem anh that, khong thu nho) — Laplacian
+  const v=$('vid'),vw=v.videoWidth,vh=v.videoHeight; if(!vw) return 0;
+  const S=320,sx=Math.max(0,(vw-S)/2),sy=Math.max(0,(vh-S)/2);
+  _shc=_shc||document.createElement('canvas'); _shc.width=S; _shc.height=S;
+  const g=_shc.getContext('2d',{willReadFrequently:true}); g.drawImage(v,sx,sy,Math.min(S,vw),Math.min(S,vh),0,0,S,S);
+  const d=g.getImageData(0,0,S,S).data; let sum=0,n=0;
+  const L=k=>d[k]*0.3+d[k+1]*0.6+d[k+2]*0.1;
+  for(let y=2;y<S-2;y+=2)for(let x=2;x<S-2;x+=2){
+    const i=(y*S+x)*4;
+    const lap=4*L(i)-L(i-4)-L(i+4)-L(i-S*4)-L(i+S*4); sum+=lap*lap; n++;
+  }
+  return n?sum/n:0;
+}
+function nextFrame(){const v=$('vid');return new Promise(r=>{let done=false;const f=()=>{if(!done){done=true;r();}};
+  if(v.requestVideoFrameCallback) v.requestVideoFrameCallback(f); setTimeout(f,80);});}
+async function grabSharp(){
+  // do net vung giua 3 khung; tu khung thu 3, khung nao dat >=85% muc net cao nhat thi CHEP NGAY chinh khung do (chep khung lon dung 1 lan)
+  if(!burstOn()) return grabUpright();
+  let bs=0;
+  for(let k=0;k<6;k++){
+    if(k) await nextFrame();
+    let s=0; try{s=doNet();}catch(e){}
+    if(s>bs) bs=s;
+    if(k>=2 && s>=0.85*bs) return grabUpright();
+  }
+  return grabUpright();
+}
+// ===== v67: CAMERA GOC CUA MAY — dung xu ly HDR/chong rung/goc rong 0.5x cua chinh dien thoai =====
+function chupGoc(){
+  if(_snapBusy) return;
+  // nha camera cua app ra truoc (nhieu may Android khong cho 2 app cung giu camera)
+  try{ if(camStream) camStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}}); }catch(e){}
+  camStream=null; camTrack=null;
+  const inp=$('natIn'); inp.value='';
+  let xong=false;
+  const moLai=()=>{ if(xong) return; xong=true; setTimeout(()=>{ if(!$('cam').classList.contains('hide') && !camStream) openCam(); },400); };
+  inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0];
+    if(f){ _snapBusy=true; toast('Đang xử lý ảnh…');
+      try{ const c=await fileToCanvas(f); if(c) await luuAnh(c,curType().kind==='free'); else toast('Không đọc được ảnh'); }
+      catch(e){ toast('Lỗi xử lý ảnh'); }
+      finally{ _snapBusy=false; } }
+    moLai();
+  };
+  inp.oncancel=moLai;
+  window.addEventListener('focus',function f1(){ window.removeEventListener('focus',f1); setTimeout(()=>{ if(!inp.files||!inp.files.length) moLai(); },1500); });
+  inp.click();
+}
+async function fileToCanvas(f){
+  let src=null,w=0,h=0;
+  try{ src=await createImageBitmap(f,{imageOrientation:'from-image'}); w=src.width; h=src.height; }
+  catch(e){ src=await new Promise(r=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{r(im);setTimeout(()=>URL.revokeObjectURL(u),1000);};im.onerror=()=>r(null);im.src=u;}); if(src){w=src.naturalWidth;h=src.naturalHeight;} }
+  if(!src||!w) return null;
+  const sc=Math.min(1,4096/Math.max(w,h)), c=document.createElement('canvas');   // cung tran 4096 nhu anh chup trong app
+  c.width=Math.round(w*sc); c.height=Math.round(h*sc);
+  c.getContext('2d').drawImage(src,0,0,c.width,c.height);
+  try{src.close&&src.close();}catch(_){}
+  return c;
+}
+// ===== v67: HIEN DO PHAN GIAI THAT camera dang cap cho app =====
+function updRes(){
+  const el=$('resChip'), v=$('vid'); if(!el) return;
+  const w=v.videoWidth,h=v.videoHeight; if(!w){el.textContent='';return;}
+  const mp=w*h/1e6;
+  el.textContent='📷 '+Math.max(w,h)+'×'+Math.min(w,h)+' · '+mp.toFixed(1)+'MP'+(mp<3?' — thấp: dùng 📸 Máy gốc':'');
+  el.style.background=mp<3?'rgba(185,28,28,.9)':'rgba(0,0,0,.6)';
+}
+
 async function snap(){
   if(_snapBusy) return;
   _snapBusy=true;
   try{
-  const S=grabUpright(); if(!S)return;   // v64: BO cho takePhoto (lag/khung tren nhieu may) — chup ngay tu khung video do net cao (DA XOAY DUNG CHIEU)
+  const S=await grabSharp(); if(!S)return;   // v67: chon khung NET nhat trong 3 khung (tat duoc o trang dau). v64: BO cho takePhoto (lag/khung tren nhieu may) — chup ngay tu khung video do net cao (DA XOAY DUNG CHIEU)
   const vw=S.width,vh=S.height;
   const big=curType().kind==='free';
   let sx=0,sy=0,sw=vw,sh=vh;
@@ -746,6 +823,13 @@ async function snap(){
   const sc=Math.min(1,4096/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);   // v63: tran 4096 (cu 2048) — giu du net cho chu phan
   const c=document.createElement('canvas');c.width=cw;c.height=ch;
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
+  try{S.width=0;}catch(_){}   // nha RAM khung goc
+  await luuAnh(c,big);
+  }finally{_snapBusy=false;}
+}
+// v67: LUU 1 ANH da xu ly (dung chung cho nut chup trong app va camera goc cua may) — noi dung giu nguyen nhu v66
+async function luuAnh(c,big){
+  const cw=c.width,ch=c.height;
   const nm=curName();
   const nmDup=photos.some(p=>p.name===nm && (p.sec||'')===SEC() && (p.pair||'')===PAIR());
   const q=big?0.85:0.9;
@@ -780,7 +864,6 @@ async function snap(){
   else{toast('✓ '+nm);syncUI();}
   if(nmDup) setTimeout(()=>toast('⚠️ TRÙNG TÊN "'+nm+'" — PAIR đã có ảnh cùng tên (bản cũ giữ ở Anh_CU). Kiểm tra lại!'),1000);
   saveState();
-  }finally{_snapBusy=false;}
 }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600);}
 
