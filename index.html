@@ -123,6 +123,12 @@ button:active{transform:scale(.95)}
   <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
   <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
   <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
+  <div class="fld"><label>Tổng số điểm theo bản vẽ của PAIR này (để trống = chưa biết) — để Kiểm thiếu bắt được cả điểm CUỐI chưa chụp</label>
+    <div style="display:flex;gap:8px">
+      <input id="tgA" inputmode="numeric" placeholder="Dim A" style="flex:1;min-width:0">
+      <input id="tgP" inputmode="numeric" placeholder="Point" style="flex:1;min-width:0">
+      <input id="tgG" inputmode="numeric" placeholder="Gap" style="flex:1;min-width:0">
+    </div></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
@@ -255,6 +261,8 @@ async function loadSaved(){
 }
 
 ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+try{tgLoadUI();$('iSec').addEventListener('input',tgLoadUI);$('iPair').addEventListener('input',tgLoadUI);
+  ['tgA','tgP','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
 try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
@@ -280,6 +288,7 @@ setTimeout(function(){
         if(np===null) return;
         const v=np.trim(); if(!v){alert('Chưa nhập số PAIR');return;}
         $('iPair').value=v;
+        try{tgLoadUI();}catch(e){}
         try{localStorage.setItem('ev_iPair',v);}catch(e){}
         start();   // v54: pair doi -> man hinh tu ve A1, bo dem 0
       }catch(e){alert('Loi: '+e);}
@@ -293,6 +302,14 @@ function saveState(){
 // may cu con luu link Drive cu -> tu chuyen sang link moi (v3, co action=pairs)
 if(($('iDrive').value||'').indexOf('AKfycbxIg3W')>=0){$('iDrive').value='';localStorage.removeItem('ev_iDrive');}
 if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfycbzc6otvcLYEEIKE9QXjUWCqN46Gdf_kX-JliQaUBdUBjguN2DHcoE-72W_Pg5i1jhanTg/exec';
+// v67: TONG SO DIEM theo ban ve (A / Point / Gap) — luu rieng tung Section|PAIR trong may
+function tgAll(){try{return JSON.parse(localStorage.getItem('ev_tgt')||'{}')||{};}catch(e){return {};}}
+function getTgt(sec,pair){return tgAll()[sec+'|'+pair]||{};}
+function setTgt(sec,pair,t){try{const a=tgAll(),k=sec+'|'+pair,c={};['A','P','G'].forEach(x=>{const n=parseInt(t[x],10);if(n>0)c[x]=n;});
+  if(Object.keys(c).length)a[k]=c;else delete a[k];localStorage.setItem('ev_tgt',JSON.stringify(a));}catch(e){}}
+function tgLoadUI(){const t=getTgt(SEC(),PAIR());['A','P','G'].forEach(x=>{const e=$('tg'+x);if(e)e.value=t[x]||'';});}
+function tgSaveUI(){setTgt(SEC(),PAIR(),{A:$('tgA').value,P:$('tgP').value,G:$('tgG').value});}
+function tgOf(k){return (k==='A'||k==='P'||k==='G')?(getTgt(SEC(),PAIR())[k]||0):0;}
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
@@ -443,7 +460,7 @@ function syncUI(){
   const lim=perLimit(),c=baseCount(curBase());
   const cnt=(lim!==Infinity)?'  '+c+'/'+lim:'';
   if(fp){ if(document.activeElement!==pt) pt.value=pos[tIdx].txt||tp.def; pt.placeholder='vd '+(tp.ph||tp.def); }
-  else { $('ptlbl').innerHTML=curLabel()+'<span id="ptcnt">'+cnt+'</span>'; }
+  else { const tg=tgOf(tp.k); $('ptlbl').innerHTML=esc(curLabel())+(tg&&tp.kind==='num'?'<span style="font-size:14px;opacity:.75">/'+tg+'</span>':'')+'<span id="ptcnt">'+cnt+'</span>'; }
   $('cnt').textContent=photos.length;
   try{updNet();}catch(_){}
 }
@@ -757,7 +774,9 @@ async function snap(){
   if(navigator.vibrate)navigator.vibrate(40);
   tiengTach();
   const b=curBase(),lim=perLimit();
-  if(lim!==Infinity&&baseCount(b)>=lim){toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}
+  if(lim!==Infinity&&baseCount(b)>=lim){const tg=tgOf(curType().k),pn=pos[tIdx].num;
+    if(tg&&pn>=tg){toast('✅ Đã chụp tới điểm CUỐI '+b+' / tổng '+tg+' — bấm 📋 Kiểm thiếu');syncUI();}
+    else{toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}}
   else{toast('✓ '+nm);syncUI();}
   if(nmDup) setTimeout(()=>toast('⚠️ TRÙNG TÊN "'+nm+'" — PAIR đã có ảnh cùng tên (bản cũ giữ ở Anh_CU). Kiểm tra lại!'),1000);
   saveState();
@@ -772,12 +791,16 @@ function missReport(sec,pair){
   photos.forEach(p=>{if(String(p.sec||'')!==sec||String(p.pair||'')!==pair)return;const b=p.name.split('.')[0];bases[b]=(bases[b]||0)+1;});
   const nums=re=>{const s=new Set();Object.keys(bases).forEach(b=>{const m=re.exec(b);if(m)s.add(+m[1]);});return s;};
   const R=[];   // {t:tieu de, n:da co, of:tong (hoac null), miss:[{lb,k,v}], half:[...], note}
-  const seq=(title,k,re,opt)=>{const S=nums(re);
-    if(!S.size){R.push({t:title,n:0,of:null,miss:[],half:[],note:opt||'CHƯA CHỤP'});return;}
-    const mx=Math.max(...S),miss=[],half=[];
-    for(let i=1;i<=mx;i++){if(!S.has(i))miss.push({lb:k+i,k:k,v:i});
+  const T=getTgt(sec,pair);   // v67: tong so diem nhap truoc (neu co) -> bat duoc ca diem CUOI chua chup
+  const seq=(title,k,re,opt)=>{const S=nums(re),tg=T[k]||0;
+    if(!S.size&&!tg){R.push({t:title,n:0,of:null,miss:[],half:[],note:opt||'CHƯA CHỤP (chưa nhập tổng điểm)'});return;}
+    const mxS=S.size?Math.max(...S):0, top=Math.max(mxS,tg), miss=[],half=[];
+    for(let i=1;i<=top;i++){if(!S.has(i))miss.push({lb:k+i,k:k,v:i});
       else if(k==='A'&&(bases['A'+i]||0)<2)half.push({lb:'A'+i+' (1/2)',k:'A',v:i});}
-    R.push({t:title,n:S.size,of:mx,miss:miss,half:half,note:'max '+k+mx});};
+    const inT=tg?[...S].filter(i=>i<=tg).length:S.size;
+    R.push({t:title+(tg?' · tổng '+tg:' · chưa nhập tổng'),n:inT,of:tg||mxS,miss:miss,half:half,
+      note:tg?(mxS>tg?'⚠️ Có ảnh '+k+mxS+' VƯỢT tổng '+tg+' — kiểm lại số điểm':''):'Chưa nhập tổng → chỉ biết thiếu tới '+k+mxS+', không biết thiếu điểm cuối',
+      warn:!tg||mxS>tg});};
   seq('Dim A (2 ảnh/điểm)','A',/^A(\d+)$/);
   seq('Điểm B','B',/^B(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
@@ -802,13 +825,17 @@ function checkMissing(){
   let nMiss=0;
   let h='<h3>📋 Kiểm thiếu — Section '+esc(sec)+' / PAIR '+esc(pair)+'</h3>'
     +'<div style="font-size:12px;color:#9fb3c8">'+rep.total+' ảnh (máy + Drive) · đếm theo TÊN ảnh'+(canJump?' · <b style="color:#fbbf24">bấm ô cam để nhảy tới điểm đó</b>':'')+'</div>';
+  {const T=getTgt(sec,pair);
+   h+='<div class="ms"><div class="h"><span>Tổng số điểm theo bản vẽ</span></div><div style="display:flex;gap:6px;margin-top:6px">'
+    +['A','P','G'].map(x=>'<input class="tgIn" data-k="'+x+'" inputmode="numeric" value="'+(T[x]||'')+'" placeholder="'+({A:'Dim A',P:'Point',G:'Gap'})[x]+'" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1px solid #2b3b52;background:#0e1726;color:#fff;font-size:15px">').join('')
+    +'<button id="tgSave" style="border:0;border-radius:9px;background:#1a73e8;color:#fff;font-weight:800;padding:0 12px">Lưu</button></div></div>';}
   rep.R.forEach(r=>{
     nMiss+=r.miss.length+r.half.length;
     const bad=r.miss.length||r.half.length, pct=r.of?Math.round(100*r.n/r.of):(r.n?100:0);
     h+='<div class="ms '+(bad?'bad':(r.n?'good':''))+'"><div class="h"><span>'+esc(r.t)+'</span><span>'
       +(r.of?(r.n+'/'+r.of):(r.n?r.n+' điểm':'—'))+(bad?'':(r.n?' ✓':''))+'</span></div>'
       +(r.of?'<div class="pbar"><i style="width:'+pct+'%;background:'+(bad?'#d97706':'#16a34a')+'"></i></div>':'')
-      +(r.note&&!bad?'<div class="d">'+esc(r.note)+'</div>':'');
+      +(r.note&&(!bad||r.warn)?'<div class="d"'+(r.warn?' style="color:#fbbf24"':'')+'>'+esc(r.note)+'</div>':'');
     r.miss.concat(r.half).forEach(m=>{
       const isHalf=/\(1\/2\)/.test(m.lb);
       h+=canJump?'<button class="jp'+(isHalf?' half':'')+'" data-k="'+esc(m.k)+'" data-v="'+esc(m.v==null?'':m.v)+'">'+esc(m.lb)+'</button>'
@@ -822,6 +849,9 @@ function checkMissing(){
   ov.innerHTML=h; document.body.appendChild(ov);
   ov.addEventListener('click',e=>{
     if(e.target.id==='missClose'){ov.remove();return;}
+    if(e.target.id==='tgSave'){const t={};ov.querySelectorAll('.tgIn').forEach(i=>t[i.dataset.k]=i.value);setTgt(sec,pair,t);
+      try{if(sec===SEC()&&pair===PAIR())tgLoadUI();syncUI();}catch(_){}
+      checkMissing();toast('Đã lưu tổng số điểm');return;}
     const b=e.target.closest('button.jp'); if(!b)return;
     ov.remove(); jumpTo(b.dataset.k,b.dataset.v);
   });
@@ -879,6 +909,7 @@ function lamTiepCu(){
   if(!_vScope) return;
   document.getElementById('iSec').value=_vScope.s;
   document.getElementById('iPair').value=_vScope.p;
+  try{tgLoadUI();}catch(e){}
   try{localStorage.setItem('ev_iSec',_vScope.s);localStorage.setItem('ev_iPair',_vScope.p);}catch(e){}
   const s=_vScope.s,p=_vScope.p; _vScope=null;
   document.getElementById('lib').classList.add('hide');
