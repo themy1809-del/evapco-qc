@@ -168,7 +168,7 @@ button:active{transform:scale(.95)}
     <button id="natBtn" onclick="chupGoc()" title="Mở camera gốc của máy — nét nhất, có góc rộng 0.5x nếu máy hỗ trợ" style="min-width:64px;height:52px;border-radius:14px;border:0;background:#0f766e;color:#fff;font-size:13px;font-weight:800;padding:0 10px;line-height:1.1">📸<br>Máy gốc</button>
     <button id="doneBtn" onclick="openLib()">Xong</button>
   </div>
-  <input id="natIn" type="file" accept="image/*" capture="environment" style="display:none">
+  <input id="natIn" type="file" accept="image/jpeg,image/png" capture="environment" style="display:none">   <!-- v67: chi nhan ANH (khong de "image/*" — vai trinh duyet mo che do QUAY video) -->
   <div id="resChip" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 222px);left:10px;z-index:60;background:rgba(0,0,0,.6);color:#fff;border-radius:12px;padding:5px 10px;font-size:11px;font-weight:800;pointer-events:none"></div>
 </section>
 
@@ -780,6 +780,7 @@ function chupGoc(){
   const moLai=()=>{ if(xong) return; xong=true; setTimeout(()=>{ if(!$('cam').classList.contains('hide') && !camStream) openCam(); },400); };
   inp.onchange=async()=>{
     const f=inp.files&&inp.files[0];
+    if(f && /^video\//i.test(f.type||'')){ alert('Máy vừa QUAY VIDEO, không phải ảnh.\nTrong camera của máy, gạt sang chế độ "ẢNH" / "CHỤP ẢNH" rồi chụp lại.'); moLai(); return; }
     if(f){ _snapBusy=true; toast('Đang xử lý ảnh…');
       try{ const c=await fileToCanvas(f); if(c) await luuAnh(c,curType().kind==='free'); else toast('Không đọc được ảnh'); }
       catch(e){ toast('Lỗi xử lý ảnh'); }
