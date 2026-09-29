@@ -161,6 +161,7 @@ button:active{transform:scale(.95)}
     <div id="zpre"></div>
   </div>
   <button id="missBtn" onclick="checkMissing()" title="Kiểm thiếu điểm" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 186px);left:10px;z-index:60;border:0;border-radius:12px;background:rgba(180,83,9,.92);color:#fff;font-size:12px;font-weight:800;padding:8px 10px">📋 Kiểm thiếu</button>
+  <button id="camRestart" onclick="openCamSafe(false)" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;padding:18px 22px;border:0;border-radius:16px;background:#1a73e8;color:#fff;font-size:17px;font-weight:800;box-shadow:0 6px 18px #0008">📷 Camera đang tắt<br><span style="font-size:13px;font-weight:600">CHẠM để mở lại</span></button>
   <div id="fhint">Chạm vào hình để lấy nét</div>
   <div id="dock">
     <button id="libBtn" onclick="openLib()">🖼 <span id="cnt">0</span></button>
@@ -499,6 +500,8 @@ async function openCam(){
     else vc.facingMode='environment';
     camStream=await navigator.mediaDevices.getUserMedia({video:vc,audio:false});
     $('vid').srcObject=camStream; camTrack=camStream.getVideoTracks()[0];
+    try{$('vid').play().catch(()=>{});}catch(_){}   // v67: ep phat lai (iOS/Android sau khi quay lai tu app khac hay de man DEN)
+    try{showRestart(false);}catch(_){}
     if(!camList.length) await listCams();
     // v59: dien thoai nhieu ong kinh hay mo nham macro/goc rong -> tu chon CAM CHINH 1 lan
     if(!camAuto){
@@ -517,7 +520,7 @@ async function openCam(){
     setTimeout(updTorchBtn,700);
     try{getWake();updGridBtn();}catch(_){}
     try{$('vid').onresize=updRes; setTimeout(updRes,800);}catch(_){}   // hien nut den pin neu camera ho tro
-  }catch(e){alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.');}
+  }catch(e){ try{showRestart(true);}catch(_){} if(!_camQuiet) alert('Không mở được camera — dùng Chrome/Safari và cho phép camera.'); }
 }
 // ===== DEN PIN camera (xuong toi trong xuong) =====
 let torchOn=false;
@@ -777,7 +780,9 @@ function chupGoc(){
   camStream=null; camTrack=null;
   const inp=$('natIn'); inp.value='';
   let xong=false;
-  const moLai=()=>{ if(xong) return; xong=true; setTimeout(()=>{ if(!$('cam').classList.contains('hide') && !camStream) openCam(); },400); };
+  _natOpen=true;
+  const moLai=()=>{ if(xong) return; xong=true; _natOpen=false; setTimeout(()=>{ if(!$('cam').classList.contains('hide') && camDead()) openCamSafe(true); },400); };
+  _natMoLai=moLai;
   inp.onchange=async()=>{
     const f=inp.files&&inp.files[0];
     if(f && /^video\//i.test(f.type||'')){ alert('Máy vừa QUAY VIDEO, không phải ảnh.\nTrong camera của máy, gạt sang chế độ "ẢNH" / "CHỤP ẢNH" rồi chụp lại.'); moLai(); return; }
@@ -791,6 +796,33 @@ function chupGoc(){
   window.addEventListener('focus',function f1(){ window.removeEventListener('focus',f1); setTimeout(()=>{ if(!inp.files||!inp.files.length) moLai(); },1500); });
   inp.click();
 }
+// ===== v67: CHONG MAN HINH DEN — tu phat hien camera tat / dung hinh va tu mo lai =====
+let _natOpen=false,_natMoLai=null,_camOpening=false,_camQuiet=false,_deadN=0,_quietTry=0;
+function camDead(){ const v=$('vid'); return !camStream||!camTrack||camTrack.readyState!=='live'||!v||v.readyState<2; }
+function showRestart(on){ const b=$('camRestart'); if(b) b.style.display=on?'block':'none'; }
+async function openCamSafe(quiet){
+  if(_camOpening) return;
+  _camOpening=true; _camQuiet=!!quiet;
+  try{ await openCam(); }finally{ _camOpening=false; _camQuiet=false; }
+  if(!quiet) _quietTry=0;
+}
+async function camCheck(){
+  if($('cam').classList.contains('hide')||!$('lib').classList.contains('hide')) return;   // khong o man camera
+  if(_natOpen||_camOpening||_snapBusy||document.visibilityState!=='visible') return;
+  const v=$('vid');
+  if(camStream&&v&&v.paused){ try{await v.play();}catch(e){} }
+  if(!camDead()){ _deadN=0; _quietTry=0; showRestart(false); return; }
+  if(++_deadN<2) return;          // cho them 1 nhip (camera dang khoi dong)
+  _deadN=0; showRestart(true);
+  if(_quietTry<3){ _quietTry++; await openCamSafe(true); }   // tu thu lai toi 3 lan, sau do cho nguoi dung cham nut
+}
+setInterval(camCheck,2000);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible') return;
+  // quay lai tu camera goc ma trinh duyet khong bao 'change'/'cancel' -> tu gai lai sau 2.5s
+  if(_natOpen) setTimeout(()=>{ if(_natOpen && !_snapBusy && _natMoLai) _natMoLai(); },2500);
+  _quietTry=0; setTimeout(camCheck,600);
+});
 async function fileToCanvas(f){
   let src=null,w=0,h=0;
   try{ src=await createImageBitmap(f,{imageOrientation:'from-image'}); w=src.width; h=src.height; }
