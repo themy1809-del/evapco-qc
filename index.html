@@ -15,7 +15,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .fld input{width:100%;padding:13px;border-radius:12px;border:1px solid #2b3b52;background:#16233a;color:#fff;font-size:17px}
 .big{width:100%;padding:16px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:18px;font-weight:800;margin-top:10px}
 .note{font-size:12px;color:#7f93a8;margin-top:14px;line-height:1.6}
-#cam{position:fixed;inset:0;background:#000}
+#cam{position:fixed;inset:0;background:#000;z-index:1}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
 #vid{width:100%;height:100%;object-fit:contain;background:#000}   /* v41: NHIN DUNG = LUU DUNG khung, khong phong to gia */
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
 #fring{position:fixed;width:72px;height:72px;border:3px solid #ffcf33;border-radius:50%;margin:-36px 0 0 -36px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:5}
@@ -123,10 +123,9 @@ button:active{transform:scale(.95)}
   <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
   <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
   <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
-  <div class="fld"><label>Tổng số điểm theo bản vẽ của PAIR này (để trống = chưa biết) — để Kiểm thiếu bắt được cả điểm CUỐI chưa chụp</label>
+  <div class="fld"><label>Tổng số điểm Dim A / Gap theo bản vẽ của PAIR này (để trống = chưa biết) — để Kiểm thiếu bắt được cả điểm CUỐI chưa chụp</label>
     <div style="display:flex;gap:8px">
       <input id="tgA" inputmode="numeric" placeholder="Dim A" style="flex:1;min-width:0">
-      <input id="tgP" inputmode="numeric" placeholder="Point" style="flex:1;min-width:0">
       <input id="tgG" inputmode="numeric" placeholder="Gap" style="flex:1;min-width:0">
     </div></div>
   <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
@@ -134,8 +133,8 @@ button:active{transform:scale(.95)}
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
-  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Bevel (BV — vát mép) · Marking · Map · Độ dày.<br>
-  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Tổng thể/Map/Độ dày chụp tự do.<br>
+  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Bevel (BV — vát mép) · Marking · Độ dày.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm · Tổng thể/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
 </section>
 
@@ -201,11 +200,9 @@ const TYPES=[
  {k:'A',  name:'Dim',      kind:'num', per:2},
  {k:'PL', name:'Thả dọi',  kind:'num', per:2},
  {k:'B',  name:'Điểm B',   kind:'num'},
- {k:'P',  name:'Điểm Point',kind:'num', per:3},   // v67: nut ‹ › tang so (truoc phai go tay)
  {k:'G',  name:'Điểm Gap', kind:'num', per:3},   // v67: nut ‹ › tang so (truoc phai go tay)
  {k:'BV', name:'Bevel',    kind:'num', per:1},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
- {k:'MAP',name:'Map',      kind:'free'},
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
@@ -268,7 +265,7 @@ async function loadSaved(){
 ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
 try{const cb=$('iBurst');cb.checked=burstOn();cb.onchange=()=>{try{localStorage.setItem('ev_burst',cb.checked?'1':'0');}catch(e){}};}catch(e){}
 try{tgLoadUI();$('iSec').addEventListener('input',tgLoadUI);$('iPair').addEventListener('input',tgLoadUI);
-  ['tgA','tgP','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
+  ['tgA','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
 try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
@@ -311,11 +308,11 @@ if(!$('iDrive').value)$('iDrive').value='https://script.google.com/macros/s/AKfy
 // v67: TONG SO DIEM theo ban ve (A / Point / Gap) — luu rieng tung Section|PAIR trong may
 function tgAll(){try{return JSON.parse(localStorage.getItem('ev_tgt')||'{}')||{};}catch(e){return {};}}
 function getTgt(sec,pair){return tgAll()[sec+'|'+pair]||{};}
-function setTgt(sec,pair,t){try{const a=tgAll(),k=sec+'|'+pair,c={};['A','P','G'].forEach(x=>{const n=parseInt(t[x],10);if(n>0)c[x]=n;});
+function setTgt(sec,pair,t){try{const a=tgAll(),k=sec+'|'+pair,c={};['A','G'].forEach(x=>{const n=parseInt(t[x],10);if(n>0)c[x]=n;});
   if(Object.keys(c).length)a[k]=c;else delete a[k];localStorage.setItem('ev_tgt',JSON.stringify(a));}catch(e){}}
-function tgLoadUI(){const t=getTgt(SEC(),PAIR());['A','P','G'].forEach(x=>{const e=$('tg'+x);if(e)e.value=t[x]||'';});}
-function tgSaveUI(){setTgt(SEC(),PAIR(),{A:$('tgA').value,P:$('tgP').value,G:$('tgG').value});}
-function tgOf(k){return (k==='A'||k==='P'||k==='G')?(getTgt(SEC(),PAIR())[k]||0):0;}
+function tgLoadUI(){const t=getTgt(SEC(),PAIR());['A','G'].forEach(x=>{const e=$('tg'+x);if(e)e.value=t[x]||'';});}
+function tgSaveUI(){setTgt(SEC(),PAIR(),{A:$('tgA').value,G:$('tgG').value});}
+function tgOf(k){return (k==='A'||k==='G')?(getTgt(SEC(),PAIR())[k]||0):0;}
 function SEC(){return $('iSec').value.trim();}
 function PAIR(){return $('iPair').value.trim();}
 function USER(){return $('iUser').value.trim();}
@@ -405,8 +402,9 @@ function start(){
   try{
     const st=JSON.parse(localStorage.getItem('ev_state')||'null');
     if(st&&st.sec===SEC()&&st.pair===PAIR()){
-      if(typeof st.tIdx==='number') tIdx=st.tIdx;
-      if(Array.isArray(st.pos)&&st.pos.length===pos.length) pos=st.pos;
+      // v67: danh sach loai diem da doi (bo Point/Map) -> chi khoi phuc khi CUNG so loai, tranh tro sai loai / treo
+      if(Array.isArray(st.pos)&&st.pos.length===pos.length){ pos=st.pos; if(typeof st.tIdx==='number'&&st.tIdx>=0&&st.tIdx<TYPES.length) tIdx=st.tIdx; }
+      else tIdx=0;
     }else{
       // v54: DOI Section/PAIR -> man hinh lam moi hoan toan (het canh "doi pair ma so van cu")
       tIdx=0; pos=TYPES.map(()=>({num:1,mk:0,txt:''}));
@@ -843,8 +841,9 @@ function updRes(){
   el.style.background=mp<3?'rgba(185,28,28,.9)':'rgba(0,0,0,.6)';
 }
 
+let _snapQ=0;   // v67: bam trong luc dang luu anh truoc -> XEP HANG chup tiep (truoc day mat lan bam, khong bao)
 async function snap(){
-  if(_snapBusy) return;
+  if(_snapBusy){ if(_snapQ<3 && !_natOpen) _snapQ++; return; }
   _snapBusy=true;
   try{
   const S=await grabSharp(); if(!S)return;   // v67: chon khung NET nhat trong 3 khung (tat duoc o trang dau). v64: BO cho takePhoto (lag/khung tren nhieu may) — chup ngay tu khung video do net cao (DA XOAY DUNG CHIEU)
@@ -858,7 +857,7 @@ async function snap(){
   c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
   try{S.width=0;}catch(_){}   // nha RAM khung goc
   await luuAnh(c,big);
-  }finally{_snapBusy=false;}
+  }finally{ _snapBusy=false; if(_snapQ>0){ _snapQ--; setTimeout(snap,0); } }
 }
 // v67: LUU 1 ANH da xu ly (dung chung cho nut chup trong app va camera goc cua may) — noi dung giu nguyen nhu v66
 async function luuAnh(c,big){
@@ -922,13 +921,11 @@ function missReport(sec,pair){
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
   seq('Điểm Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
-  seq('Điểm Point','P',/^P(\d+)(?:-\d+)?$/,'không có (bỏ qua nếu section không có)');
   {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
    R.push({t:'Marking (chuẩn 11)',n:11-miss.length,of:11,miss:miss,half:[]});}
   const has=pre=>Object.keys(bases).some(b=>b.startsWith(pre));
   R.push({t:'Tổng thể',n:has('TT')?1:0,of:1,miss:has('TT')?[]:[{lb:'Chụp Tổng thể',k:'TT'}],half:[]});
-  R.push({t:'Map',n:has('MAP')?1:0,of:1,miss:has('MAP')?[]:[{lb:'Chụp Map',k:'MAP'}],half:[]});
   R.push({t:'Độ dày',n:has('TH')?1:0,of:null,miss:[],half:[],note:has('TH')?'✓':'(không bắt buộc)'});
   return {R:R,total:Object.values(bases).reduce((a,b)=>a+b,0)};
 }
@@ -943,7 +940,7 @@ function checkMissing(){
     +'<div style="font-size:12px;color:#9fb3c8">'+rep.total+' ảnh (máy + Drive) · đếm theo TÊN ảnh'+(canJump?' · <b style="color:#fbbf24">bấm ô cam để nhảy tới điểm đó</b>':'')+'</div>';
   {const T=getTgt(sec,pair);
    h+='<div class="ms"><div class="h"><span>Tổng số điểm theo bản vẽ</span></div><div style="display:flex;gap:6px;margin-top:6px">'
-    +['A','P','G'].map(x=>'<input class="tgIn" data-k="'+x+'" inputmode="numeric" value="'+(T[x]||'')+'" placeholder="'+({A:'Dim A',P:'Point',G:'Gap'})[x]+'" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1px solid #2b3b52;background:#0e1726;color:#fff;font-size:15px">').join('')
+    +['A','G'].map(x=>'<input class="tgIn" data-k="'+x+'" inputmode="numeric" value="'+(T[x]||'')+'" placeholder="'+({A:'Dim A',G:'Gap'})[x]+'" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1px solid #2b3b52;background:#0e1726;color:#fff;font-size:15px">').join('')
     +'<button id="tgSave" style="border:0;border-radius:9px;background:#1a73e8;color:#fff;font-weight:800;padding:0 12px">Lưu</button></div></div>';}
   rep.R.forEach(r=>{
     nMiss+=r.miss.length+r.half.length;
@@ -1112,6 +1109,7 @@ function openLib(){
   renderGrid();$('lib').classList.remove('hide');
 }
 function goHome(){   // ve TRANG DAU (setup): tat camera cho nhe may, giu nguyen anh da chup
+  _snapQ=0;   // v67: bo cac lan bam dang xep hang khi roi man chup
   try{ if(camStream) camStream.getTracks().forEach(function(t){try{t.stop();}catch(e){}}); }catch(e){}
   camStream=null; camTrack=null;
   try{$('vid').pause();}catch(e){}
@@ -1147,7 +1145,7 @@ function cardHTML(p,i){
     return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+esc(p.name)+'</b></div>';
   }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-  const chips=['TT','L','A','PL','B','P','G','BV','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  const chips=['TT','L','A','PL','B','G','BV','MK','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+esc(p.name)+'" onchange="rename('+i+',this.value)"><button onclick="toggleType(this)" style="flex:0 0 auto;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:800;background:#334155;color:#fff">Loại ⌄</button><button class="del" onclick="del('+i+')">✕</button></div><div class="chips" style="display:none">'+chips+'</div>';
 }
 let _viewList=[], _rgT=null;
@@ -1161,7 +1159,8 @@ function renderGrid(){
     && (!fk || typeOf(x.p.name)===fk) && (!q || String(x.p.name).toUpperCase().includes(q)));
   _viewList=list.map(x=>x.i);
   const g=$('grid'); g.innerHTML='';
-  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#7f93a8;padding:30px 10px">Không có ảnh nào khớp bộ lọc</div>';return;}
+  if(!list.length){ _rgSeq++;   // huy dot ve cu dang chay do
+   g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#7f93a8;padding:30px 10px">Không có ảnh nào khớp bộ lọc</div>';return;}
   const seq=++_rgSeq; let idx=0; const CH=16;
   (function chunk(){
     if(seq!==_rgSeq) return;               // co lan ve moi hon -> huy lan cu
