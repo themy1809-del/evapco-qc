@@ -150,8 +150,8 @@ button:active{transform:scale(.95)}
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
-  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Bevel (BV — vát mép) · Marking · Độ dày.<br>
-  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm · Tổng thể/Độ dày chụp tự do.<br>
+  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
 </section>
 
@@ -221,6 +221,7 @@ const TYPES=[
  {k:'PL', name:'Thả dọi',  kind:'num', per:2},
  {k:'B',  name:'Điểm B',   kind:'num'},
  {k:'G',  name:'Điểm Gap', kind:'num', per:3},   // v67: nut ‹ › tang so (truoc phai go tay)
+ {k:'LB', name:'Landing bar', kind:'num'},   // v70: LB1.1, LB1.2… — bam › de sang thanh ke tiep (khong tu nhay)
  {k:'BV', name:'Bevel',    kind:'num', per:1},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
@@ -230,7 +231,7 @@ const TYPES=[
 // v67: chong vo HTML khi ten anh / Section / PAIR co dau nhay, dau <
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 // v67: nhan dien LOAI DIEM tu ten anh (khoa dai truoc: PART/PL/PS truoc P; GAP -> G)
-const TYPE_KEYS=['PART','MAP','PL','PS','BV','MK','TT','TH','GAP','L','A','B','P','G'];
+const TYPE_KEYS=['PART','MAP','PL','PS','BV','MK','TT','TH','GAP','LB','L','A','B','P','G'];   // LB phai dung TRUOC L
 function typeOf(name){
   const b=String(name||'').split('.')[0].toUpperCase();
   for(const k of TYPE_KEYS){
@@ -992,12 +993,13 @@ function missReport(sec,pair){
   const nums=re=>{const s=new Set();Object.keys(bases).forEach(b=>{const m=re.exec(b);if(m)s.add(+m[1]);});return s;};
   const R=[];   // {t:tieu de, n:da co, of:tong (hoac null), miss:[{lb,k,v}], half:[...], note}
   const T=getTgt(sec,pair);   // v67: tong so diem nhap truoc (neu co) -> bat duoc ca diem CUOI chua chup
-  const seq=(title,k,re,opt)=>{const S=nums(re),tg=T[k]||0;
+  const seq=(title,k,re,opt)=>{const S=nums(re),tg=T[k]||0,hasT=(k==='A'||k==='G');   // chi Dim A / Gap co o nhap tong
     if(!S.size&&!tg){R.push({t:title,n:0,of:null,miss:[],half:[],note:opt||'CHƯA CHỤP (chưa nhập tổng điểm)'});return;}
     const mxS=S.size?Math.max(...S):0, top=Math.max(mxS,tg), miss=[],half=[];
     for(let i=1;i<=top;i++){if(!S.has(i))miss.push({lb:k+i,k:k,v:i});
       else if(k==='A'&&(bases['A'+i]||0)<2)half.push({lb:'A'+i+' (1/2)',k:'A',v:i});}
     const inT=tg?[...S].filter(i=>i<=tg).length:S.size;
+    if(!hasT){R.push({t:title,n:S.size,of:mxS,miss:miss,half:half,note:'tới '+k+mxS});return;}
     R.push({t:title+(tg?' · tổng '+tg:' · chưa nhập tổng'),n:inT,of:tg||mxS,miss:miss,half:half,
       note:tg?(mxS>tg?'⚠️ Có ảnh '+k+mxS+' VƯỢT tổng '+tg+' — kiểm lại số điểm':''):'Chưa nhập tổng → chỉ biết thiếu tới '+k+mxS+', không biết thiếu điểm cuối',
       warn:!tg||mxS>tg});};
@@ -1006,6 +1008,7 @@ function missReport(sec,pair){
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
   seq('Điểm Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
+  seq('Landing bar','LB',/^LB(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
    R.push({t:'Marking (chuẩn 11)',n:11-miss.length,of:11,miss:miss,half:[]});}
@@ -1237,7 +1240,7 @@ function cardHTML(p,i){
     return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+esc(p.name)+'</b></div>';
   }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-  const chips=['TT','L','A','PL','B','G','BV','MK','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  const chips=['TT','L','A','PL','B','G','LB','BV','MK','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+esc(p.name)+'" onchange="rename('+i+',this.value)"><button onclick="toggleType(this)" style="flex:0 0 auto;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:800;background:#334155;color:#fff">Loại ⌄</button><button class="del" onclick="del('+i+')">✕</button></div><div class="chips" style="display:none">'+chips+'</div>';
 }
 let _viewList=[], _rgT=null;
@@ -1385,6 +1388,7 @@ function nextName(k,self){
   if(k==='A'){let pts={};pl.forEach(p=>{const m=/^A(\d+)\.(\d+)/.exec(p.name);if(m)pts[m[1]]=Math.max(pts[m[1]]||0,+m[2]);});let pn=1;while((pts[pn]||0)>=2)pn++;return 'A'+pn+'.'+((pts[pn]||0)+1);}
   if(k==='PL'){let pts={};pl.forEach(p=>{const m=/^PL(\d+)\.(\d+)/.exec(p.name);if(m)pts[m[1]]=Math.max(pts[m[1]]||0,+m[2]);});let pn=1;while((pts[pn]||0)>=2)pn++;return 'PL'+pn+'.'+((pts[pn]||0)+1);}
   if(k==='L'){let mx=0;pl.forEach(p=>{const m=/^L(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'L'+(mx+1)+'.1';}
+  if(k==='LB'){let mx=0;pl.forEach(p=>{const m=/^LB(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'LB'+(mx+1)+'.1';}
   if(k==='B'){let mx=0;pl.forEach(p=>{const m=/^B(\d+)\./.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'B'+(mx+1)+'.1';}
   if(k==='G'||k==='GAP'){let mx=0;pl.forEach(p=>{const m=/^G(?:AP)?(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'G'+n+'.1';}
   if(k==='P'){let mx=0;pl.forEach(p=>{const m=/^P(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'P'+n+'.1';}
@@ -1543,7 +1547,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v69-den';
+const APP_VER='v70-lb';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 setTimeout(async ()=>{
   try{
