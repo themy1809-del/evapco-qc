@@ -180,6 +180,7 @@ button:active{transform:scale(.95)}
       <div class="tinfo" id="resChip"></div>
       <div class="tinfo" id="netLine"></div>
       <div class="tinfo" id="focusInfo"></div>
+      <div class="tinfo">📦 Phiên bản app: <b id="verInfo"></b> · <button onclick="ktBanMoi(false)" style="border:0;border-radius:8px;background:#334155;color:#fff;font-weight:800;padding:4px 8px">Kiểm tra bản mới</button></div>
     </div>
   </div>
   <div id="fring"></div>
@@ -1547,20 +1548,37 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v70-lb';
+const APP_VER='v71-capnhat';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
-setTimeout(async ()=>{
+try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
+// v71: KIEM TRA BAN MOI — luc mo app VA moi lan app duoc danh thuc lai (iPhone/Android hay chi danh thuc trang cu, khong mo lai tu dau)
+let _ktLast=0;
+async function ktBanMoi(auto){
+  _ktLast=Date.now();
   try{
-    if(!navigator.onLine) return;
+    if(!navigator.onLine){ if(!auto) toast('Chưa có mạng để kiểm tra bản mới'); return; }
     const t=await fetch('index.html?nc='+Date.now(),{cache:'no-store'}).then(r=>r.text());
     const m=t.match(/APP_VER='([^']+)'/);
     if(m&&m[1]!==APP_VER){
-      toast('Có bản mới → tự cập nhật…');
+      const dangChup=!$('cam').classList.contains('hide')||!$('lib').classList.contains('hide');
+      if(auto&&dangChup){ hienBanMoi(m[1]); return; }   // dang chup/xem thu vien -> KHONG tu tai lai giua chung, hien nut de nguoi dung tu bam
+      toast('Có bản mới '+m[1].split('-')[0]+' → tự cập nhật…');
       // ep tai BAN MOI THAT (né cache iOS: reload thuong van ra ban cu)
       setTimeout(()=>location.replace('index.html?capnhat='+Date.now()),1000);
-    }
-  }catch(e){}
-},2500);
+    } else if(!auto) toast('✓ Đang dùng bản mới nhất '+APP_VER.split('-')[0]);
+  }catch(e){ if(!auto) toast('Không kiểm tra được — thử lại sau'); }
+}
+function hienBanMoi(v){
+  let b=document.getElementById('updBar');
+  if(!b){ b=document.createElement('button'); b.id='updBar';
+    b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 6px);z-index:500;border:0;border-radius:18px;padding:9px 16px;background:#16a34a;color:#fff;font-weight:800;font-size:13px;box-shadow:0 4px 14px #0008';
+    b.onclick=()=>location.replace('index.html?capnhat='+Date.now());
+    document.body.appendChild(b); }
+  b.textContent='🔄 Có bản mới '+String(v).split('-')[0]+' — bấm để cập nhật (ảnh đã chụp không mất)';
+}
+setTimeout(()=>ktBanMoi(true),2500);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && Date.now()-_ktLast>60000) setTimeout(()=>ktBanMoi(true),1500); });
+setInterval(()=>{ if(document.visibilityState==='visible' && Date.now()-_ktLast>30*60000) ktBanMoi(true); },60000);
 // v61: iOS bo qua user-scalable=no -> chan double-tap zoom bang JS, van giu cu bam thu 2
 document.addEventListener('touchstart',function(){},{passive:true});  // kich hoat :active tren iOS
 let _lastTap=0;
