@@ -151,7 +151,7 @@ button:active{transform:scale(.95)}
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
-  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm, mỗi tấm tự lưu thêm 1 bản tên P (G1.1 + P1.1) · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
 </section>
 
@@ -972,6 +972,15 @@ async function luuAnh(c,big){
   try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(nm,b64); }catch(e){}   // luu file vao may CHI tren Android; iOS chan luu ngam -> bo qua de KHONG hien bang download moi lan chup
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
+  // v72: GAP chup 1 tam -> luu THEM 1 ban sao ten P cung so diem (G1.1 -> P1.1), gui Drive nhu anh rieng
+  let pNm='';
+  if(curType().k==='G'){
+    const pb='P'+pos[tIdx].num; pNm=pb+'.'+(baseCount(pb)+1);
+    const id2='p'+tnow+'P'+Math.random().toString(36).slice(2,6);
+    idbPut({id:id2,t:tnow+1,sec:SEC(),pair:PAIR(),name:pNm,b64,tb,gen:big});
+    try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(pNm,b64); }catch(e){}
+    photos.unshift({id:id2,t:tnow+1,sec:SEC(),pair:PAIR(),name:pNm,tb,gen:big});
+  }
   pump();   // gửi NGẦM ngay khi chụp; CHỈ pump() (bỏ autoSend để không gửi 2 lần) — pump lo gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
@@ -979,8 +988,8 @@ async function luuAnh(c,big){
   const b=curBase(),lim=perLimit();
   if(lim!==Infinity&&baseCount(b)>=lim){const tg=tgOf(curType().k),pn=pos[tIdx].num;
     if(tg&&pn>=tg){toast('✅ Đã chụp tới điểm CUỐI '+b+' / tổng '+tg+' — bấm 📋 Kiểm thiếu');syncUI();}
-    else{toast(b+' đủ '+lim+' ✓ → '+nextLabel());advance();}}
-  else{toast('✓ '+nm);syncUI();}
+    else{toast((pNm?nm+' + '+pNm+' · ':'')+b+' đủ '+lim+' ✓ → '+nextLabel());advance();}}
+  else{toast('✓ '+nm+(pNm?' + '+pNm:''));syncUI();}
   if(nmDup) setTimeout(()=>toast('⚠️ TRÙNG TÊN "'+nm+'" — PAIR đã có ảnh cùng tên (bản cũ giữ ở Anh_CU). Kiểm tra lại!'),1000);
   saveState();
 }
@@ -1249,7 +1258,8 @@ function renderGridSoon(){clearTimeout(_rgT);_rgT=setTimeout(renderGrid,250);}
 function renderGrid(){
   updLibTitle();
   const ft=$('fType');
-  if(ft&&ft.options.length<2) TYPES.forEach(t=>{const o=document.createElement('option');o.value=t.k;o.textContent=t.k+' · '+t.name;ft.appendChild(o);});
+  if(ft&&ft.options.length<2) {TYPES.forEach(t=>{const o=document.createElement('option');o.value=t.k;o.textContent=t.k+' · '+t.name;ft.appendChild(o);});
+    const o=document.createElement('option');o.value='P';o.textContent='P · bản sao của Gap';ft.appendChild(o);}
   const fk=ft?ft.value:'', q=(($('fSearch')||{}).value||'').trim().toUpperCase();
   const list=photos.map((p,i)=>({p:p,i:i})).filter(x=> inScope(x.p) && (libFilter==='all' || (libFilter==='pend' && !x.p.up) || (libFilter==='up' && x.p.up))
     && (!fk || typeOf(x.p.name)===fk) && (!q || String(x.p.name).toUpperCase().includes(q)));
@@ -1548,7 +1558,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v71-capnhat';
+const APP_VER='v72-gap-p';
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
 // v71: KIEM TRA BAN MOI — luc mo app VA moi lan app duoc danh thuc lai (iPhone/Android hay chi danh thuc trang cu, khong mo lai tu dau)
