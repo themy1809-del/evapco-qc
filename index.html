@@ -150,6 +150,8 @@ button:active{transform:scale(.95)}
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
+  <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao()">📄 Xem &amp; xuất báo cáo PAIR này</button>
+  <div class="fld" style="margin-top:8px"><label>Link máy chủ báo cáo (dán 1 lần — vd http://192.168.1.10:8010)</label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
   A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm, mỗi tấm tự lưu thêm 1 bản tên P (G1.1 + P1.1) · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
@@ -284,7 +286,7 @@ async function loadSaved(){
   }
 }
 
-['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
+['iSec','iPair','iUser','iWk','iDrive','iBC'].forEach(id=>{const v=localStorage.getItem('ev_'+id);if(v)$(id).value=v;});
 try{const cb=$('iBurst');cb.checked=burstOn();cb.onchange=()=>{try{localStorage.setItem('ev_burst',cb.checked?'1':'0');}catch(e){}};}catch(e){}
 try{tgLoadUI();$('iSec').addEventListener('input',tgLoadUI);$('iPair').addEventListener('input',tgLoadUI);
   ['tgA','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
@@ -422,7 +424,7 @@ function start(){
   }catch(e){}
   lockPortrait();
   try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}   // xin bo nho BEN (chong bi xoa)
-  ['iSec','iPair','iUser','iWk','iDrive'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
+  ['iSec','iPair','iUser','iWk','iDrive','iBC'].forEach(id=>localStorage.setItem('ev_'+id,$(id).value));
   // khoi phuc dung CHO DANG CHUP DO (loai diem + so diem) cua Section/PAIR nay
   try{
     const st=JSON.parse(localStorage.getItem('ev_state')||'null');
@@ -1558,7 +1560,19 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v72-gap-p';
+const APP_VER='v73-bao-cao';
+// v73: nut 📄 BAO CAO — mo may chu QC LAP THU dung Section/PAIR dang chon: may chu tu keo anh moi tu Drive,
+//      AI doc so phan / but long, xuat bao cao (Excel + Word + PDF). App nay KHONG giu key AI / bo may bao cao.
+function moBaoCao(){
+  const u=String($('iBC').value||'').trim().replace(/\/+$/,'');
+  if(!/^https?:\/\/[^\s]+$/i.test(u)){alert('Dán "Link máy chủ báo cáo" 1 lần (ô ngay dưới nút), vd http://192.168.1.10:8010');try{$('iBC').focus();}catch(e){}return;}
+  const s=SEC(), p=PAIR();
+  if(!s||!p){alert('Chưa nhập Section / PAIR.');return;}
+  try{localStorage.setItem('ev_iBC',u);}catch(e){}
+  const chua=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p).length;
+  if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\nVẫn mở báo cáo? (gửi Drive xong bấm lại để bổ sung)'))return;
+  window.open(u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p),'_blank');
+}
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
 // v71: KIEM TRA BAN MOI — luc mo app VA moi lan app duoc danh thuc lai (iPhone/Android hay chi danh thuc trang cu, khong mo lai tu dau)
