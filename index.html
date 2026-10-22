@@ -1012,7 +1012,7 @@ function missReport(sec,pair){
   seq('Điểm B','B',/^B(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
-  seq('Điểm Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
+  seq('Point & Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
   seq('Landing bar','LB',/^LB(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
