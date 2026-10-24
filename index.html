@@ -151,6 +151,7 @@ button:active{transform:scale(.95)}
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
   <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao()">📄 Xem &amp; xuất báo cáo PAIR này</button>
+  <button class="big" style="background:#1F4E78;margin-top:8px" onclick="moBaoCao(true)">🤖 Soát PAIR này bằng AI</button>
   <div class="fld" style="margin-top:8px"><label>Link máy chủ báo cáo (dán 1 lần — vd http://192.168.1.10:8010)</label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
   A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm, mỗi tấm tự lưu thêm 1 bản tên P (G1.1 + P1.1) · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
@@ -1553,19 +1554,21 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v74-bo-p';
+const APP_VER='v75-soat-ai';
+// v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
+//      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
 // v73: nut 📄 BAO CAO — mo may chu QC LAP THU dung Section/PAIR dang chon: may chu tu keo anh moi tu Drive,
 //      AI doc so phan / but long, xuat bao cao (Excel + Word + PDF). App nay KHONG giu key AI / bo may bao cao.
-function moBaoCao(){
+function moBaoCao(soat){
   const u=String($('iBC').value||'').trim().replace(/\/+$/,'');
   if(!/^https?:\/\/[^\s]+$/i.test(u)){alert('Dán "Link máy chủ báo cáo" 1 lần (ô ngay dưới nút), vd http://192.168.1.10:8010');try{$('iBC').focus();}catch(e){}return;}
   const s=SEC(), p=PAIR();
   if(!s||!p){alert('Chưa nhập Section / PAIR.');return;}
   try{localStorage.setItem('ev_iBC',u);}catch(e){}
   const chua=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p).length;
-  if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\nVẫn mở báo cáo? (gửi Drive xong bấm lại để bổ sung)'))return;
-  window.open(u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p),'_blank');
+  if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\n'+(soat?'Vẫn soát? (AI chỉ thấy ảnh đã nhận vào máy chủ)':'Vẫn mở báo cáo? (gửi Drive xong bấm lại để bổ sung)')))return;
+  window.open(u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p)+(soat?'&soat=1':''),'_blank');
 }
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
