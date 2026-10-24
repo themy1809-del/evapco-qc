@@ -150,7 +150,7 @@ button:active{transform:scale(.95)}
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   <button class="big" onclick="start()">📷 Mở camera</button>
   <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
-  <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao()">📄 Xem &amp; xuất báo cáo PAIR này</button>
+  <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao('xuat')">📄 XUẤT BÁO CÁO PAIR này</button>
   <button class="big" style="background:#1F4E78;margin-top:8px" onclick="moBaoCao(true)">🤖 Soát PAIR này bằng AI</button>
   <div class="fld" style="margin-top:8px"><label>Link máy chủ báo cáo (dán 1 lần — vd http://192.168.1.10:8010)</label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
@@ -1554,21 +1554,32 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v75-soat-ai';
+const APP_VER='v76-xuat-bc';
 // v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
 //      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
 // v73: nut 📄 BAO CAO — mo may chu QC LAP THU dung Section/PAIR dang chon: may chu tu keo anh moi tu Drive,
 //      AI doc so phan / but long, xuat bao cao (Excel + Word + PDF). App nay KHONG giu key AI / bo may bao cao.
-function moBaoCao(soat){
+// v76: nut 📄 XUAT BAO CAO — 1 cham: tu gui anh PAIR nay con thieu len Drive -> mo may chu ?xuat=1 -> may chu TU lay anh,
+//      AI doc so, dung Word + Excel, xuat PDF, soat -> hien nut tai file. (moBaoCao(true) = soat AI nhu v75)
+async function moBaoCao(che_do){
+  const soat=che_do===true, xuat=che_do==='xuat';
   const u=String($('iBC').value||'').trim().replace(/\/+$/,'');
   if(!/^https?:\/\/[^\s]+$/i.test(u)){alert('Dán "Link máy chủ báo cáo" 1 lần (ô ngay dưới nút), vd http://192.168.1.10:8010');try{$('iBC').focus();}catch(e){}return;}
   const s=SEC(), p=PAIR();
   if(!s||!p){alert('Chưa nhập Section / PAIR.');return;}
   try{localStorage.setItem('ev_iBC',u);}catch(e){}
-  const chua=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p).length;
-  if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\n'+(soat?'Vẫn soát? (AI chỉ thấy ảnh đã nhận vào máy chủ)':'Vẫn mở báo cáo? (gửi Drive xong bấm lại để bổ sung)')))return;
-  window.open(u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p)+(soat?'&soat=1':''),'_blank');
+  const chuaDs=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p), chua=chuaDs.length, drv=DRV();
+  let w=null;
+  if(xuat&&chua&&drv){                       // gui truoc anh con thieu cua PAIR nay -> may chu lay du anh
+    w=window.open('about:blank','_blank');   // mo tab ngay luc bam (sau khi gui xong trinh duyet co the chan popup)
+    toast('☁️ Gửi '+chua+' ảnh PAIR này lên Drive trước…');
+    let ok=0;for(const x of chuaDs){if(await sendOne(drv,x))ok++;try{updBadge(x);}catch(e){}}
+    try{updLibTitle();}catch(e){}
+    if(ok<chua&&!confirm((chua-ok)+' ảnh chưa gửi được (mất mạng?).\nVẫn xuất báo cáo với ảnh máy chủ đã có?')){if(w)w.close();return;}
+  }else if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\n'+(soat?'Vẫn soát? (AI chỉ thấy ảnh đã nhận vào máy chủ)':'Vẫn xuất báo cáo? (gửi Drive xong bấm lại để bổ sung)')))return;
+  const link=u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p)+(soat?'&soat=1':'')+(xuat?'&xuat=1':'');
+  if(w&&!w.closed)w.location.href=link;else window.open(link,'_blank');
 }
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
