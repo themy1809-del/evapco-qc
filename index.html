@@ -223,7 +223,7 @@ const TYPES=[
  {k:'A',  name:'Dim',      kind:'num', per:2},
  {k:'PL', name:'Thả dọi',  kind:'num', per:2},
  {k:'B',  name:'Điểm B',   kind:'num'},
- {k:'G',  name:'Điểm Gap', kind:'num', per:3},   // v67: nut ‹ › tang so (truoc phai go tay)
+ {k:'G',  name:'Point & Gap', kind:'num', per:3},   // v74: bao cao ghi "Point and Gap: 1-1" theo anh G   // v67: nut ‹ › tang so (truoc phai go tay)
  {k:'LB', name:'Landing bar', kind:'num'},   // v70: LB1.1, LB1.2… — bam › de sang thanh ke tiep (khong tu nhay)
  {k:'BV', name:'Bevel',    kind:'num', per:1},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
@@ -974,15 +974,8 @@ async function luuAnh(c,big){
   try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(nm,b64); }catch(e){}   // luu file vao may CHI tren Android; iOS chan luu ngam -> bo qua de KHONG hien bang download moi lan chup
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
-  // v72: GAP chup 1 tam -> luu THEM 1 ban sao ten P cung so diem (G1.1 -> P1.1), gui Drive nhu anh rieng
-  let pNm='';
-  if(curType().k==='G'){
-    const pb='P'+pos[tIdx].num; pNm=pb+'.'+(baseCount(pb)+1);
-    const id2='p'+tnow+'P'+Math.random().toString(36).slice(2,6);
-    idbPut({id:id2,t:tnow+1,sec:SEC(),pair:PAIR(),name:pNm,b64,tb,gen:big});
-    try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(pNm,b64); }catch(e){}
-    photos.unshift({id:id2,t:tnow+1,sec:SEC(),pair:PAIR(),name:pNm,tb,gen:big});
-  }
+  // v74 (anh My 22/10): BO nhan ban P tu anh Gap — bao cao nay ghi "Point and Gap: 1-1" thang tu anh G (v72 luu them P1.1 -> trung anh)
+  const pNm='';
   pump();   // gửi NGẦM ngay khi chụp; CHỈ pump() (bỏ autoSend để không gửi 2 lần) — pump lo gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
@@ -1019,7 +1012,7 @@ function missReport(sec,pair){
   seq('Điểm B','B',/^B(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
-  seq('Điểm Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
+  seq('Point & Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
   seq('Landing bar','LB',/^LB(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
@@ -1560,7 +1553,8 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v73-bao-cao';
+const APP_VER='v74-bo-p';
+// v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
 // v73: nut 📄 BAO CAO — mo may chu QC LAP THU dung Section/PAIR dang chon: may chu tu keo anh moi tu Drive,
 //      AI doc so phan / but long, xuat bao cao (Excel + Word + PDF). App nay KHONG giu key AI / bo may bao cao.
 function moBaoCao(){
