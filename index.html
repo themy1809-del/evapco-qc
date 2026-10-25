@@ -15,6 +15,19 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .fld input{width:100%;padding:13px;border-radius:12px;border:1px solid #2b3b52;background:#16233a;color:#fff;font-size:17px}
 .big{width:100%;padding:16px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:18px;font-weight:800;margin-top:10px}
 .note{font-size:12px;color:#7f93a8;margin-top:14px;line-height:1.6}
+/* v78: trang dau gon — khoi 'PAIR dang lam' / 'Cai dat' */
+.khoi{background:#13203a;border:1px solid #24405f;border-radius:16px;padding:12px 14px 4px;margin:12px 0}
+.khoi-t{font-size:13px;font-weight:800;color:#9fb3c8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;cursor:pointer;list-style:none}
+.khoi-t small{text-transform:none;letter-spacing:0;font-weight:600;color:#7f93a8}
+details.khoi summary::-webkit-details-marker{display:none}
+details.khoi summary::after{content:"▾";float:right;color:#7f93a8}
+details.khoi[open] summary::after{content:"▴"}
+details.khoi{padding-bottom:4px}
+.hang2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hang2 .fld{margin:8px 0}
+.fld label small{color:#7f93a8;font-weight:500}
+.big.nho{padding:13px;font-size:15px}
+#setup .fld input:focus{border-color:#1a73e8;outline:none;box-shadow:0 0 0 3px #1a73e833}
 #cam{position:fixed;inset:0;background:#000;z-index:1;display:flex;flex-direction:column}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
 #vwrap{position:relative;flex:1;min-height:0;overflow:hidden}
 #vid{width:100%;height:100%;object-fit:contain;background:#000;display:block}   /* v41: NHIN DUNG = LUU DUNG khung, khong phong to gia */
@@ -136,25 +149,34 @@ button:active{transform:scale(.95)}
   </div>
   <div id="stats"></div>
   <div id="stoInfo"></div>
-  <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
-  <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
-  <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
-  <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
-  <div class="fld"><label>Tổng số điểm Dim A / Gap theo bản vẽ của PAIR này (để trống = chưa biết) — để Kiểm thiếu bắt được cả điểm CUỐI chưa chụp</label>
-    <div style="display:flex;gap:8px">
-      <input id="tgA" inputmode="numeric" placeholder="Dim A" style="flex:1;min-width:0">
-      <input id="tgG" inputmode="numeric" placeholder="Gap" style="flex:1;min-width:0">
-    </div></div>
-  <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
+  <div class="khoi"><div class="khoi-t">PAIR đang làm</div>
+    <div class="hang2">
+      <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
+      <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
+    </div>
+    <div class="hang2">
+      <div class="fld"><label>Tổng điểm Dim A <small>(theo bản vẽ)</small></label><input id="tgA" inputmode="numeric" placeholder="để trống = chưa biết"></div>
+      <div class="fld"><label>Tổng điểm Gap</label><input id="tgG" inputmode="numeric" placeholder="để trống = chưa biết"></div>
+    </div>
+  </div>
+  <button class="big" onclick="start()">📷 Mở camera</button>
+  <div class="hang2" style="margin-top:8px">
+    <button class="big nho" style="background:#15803d;margin:0" onclick="moBaoCao('xuat')">📄 XUẤT BÁO CÁO</button>
+    <button class="big nho" style="background:#1F4E78;margin:0" onclick="moBaoCao(true)">🤖 Soát bằng AI</button>
+  </div>
+  <button class="big nho" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
+  <details class="khoi" id="caiDat"><summary class="khoi-t">⚙ Cài đặt <small>(làm 1 lần)</small></summary>
+    <div class="fld"><label>Link máy chủ báo cáo <small>(vd https://qcanha.com/laptu)</small></label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
+    <div class="fld"><label>Link Drive <small>(để gửi ảnh lên Drive)</small></label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
+    <div class="hang2">
+      <div class="fld"><label>Người kiểm tra</label><input id="iUser" placeholder="Tên bạn"></div>
+      <div class="fld"><label>Xưởng / Tổ</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
+    </div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
-  <button class="big" onclick="start()">📷 Mở camera</button>
-  <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
-  <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao('xuat')">📄 XUẤT BÁO CÁO PAIR này</button>
-  <button class="big" style="background:#1F4E78;margin-top:8px" onclick="moBaoCao(true)">🤖 Soát PAIR này bằng AI</button>
-  <div class="fld" style="margin-top:8px"><label>Link máy chủ báo cáo (dán 1 lần — vd http://192.168.1.10:8010)</label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
-  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
-  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm, mỗi tấm tự lưu thêm 1 bản tên P (G1.1 + P1.1) · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
+  </details>
+  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Point &amp; Gap (G) · Landing bar (LB) · Bevel (BV — vát mép) · Marking (MK) · Marking Map (MAP) · Tên Part · Độ dày.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua 8 góc · Gap = 3 ảnh/điểm (báo cáo ghi "Point and Gap") · MAP = 1 ảnh · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
   🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
 </section>
 
@@ -199,7 +221,7 @@ button:active{transform:scale(.95)}
 <section id="lib" class="hide">
   <header>
     <button onclick="closeLib()" style="background:#26405f;color:#fff;padding:9px 14px;border-radius:10px;border:0;font-weight:700">‹ Chụp tiếp</button>
-    <button onclick="goHome()" style="background:#6b5b95;color:#fff;padding:9px 12px;border-radius:10px;border:0;font-weight:700" title="Về trang chủ">🏠</button>
+    <button onclick="goHome()" style="background:#334155;color:#fff;padding:9px 12px;border-radius:10px;border:0;font-weight:700" title="Về trang chủ">🏠</button>
     <h2 id="libTitle">Ảnh</h2>
   </header>
   <div id="libTools">
@@ -1193,7 +1215,7 @@ function openLib(){
       lt.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#b45309;flex:0 0 auto;display:none';
       lt.onclick=lamTiepCu; h.appendChild(lt);
       const fc=document.createElement('button'); fc.id='fCu'; fc.textContent='📂 PAIR cũ';
-      fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#6b5b95;flex:0 0 auto';
+      fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#334155;flex:0 0 auto';
       fc.onclick=xemCu; h.appendChild(fc);
       const fd=document.createElement('button'); fd.id='fDrive'; fd.textContent='☁️ Đã chụp (Drive)';
       fd.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#0b74de;flex:0 0 auto';
@@ -1557,7 +1579,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v77-map-part';
+const APP_VER='v78-giao-dien';
 // v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
 //      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
