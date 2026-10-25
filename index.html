@@ -15,6 +15,27 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0e172
 .fld input{width:100%;padding:13px;border-radius:12px;border:1px solid #2b3b52;background:#16233a;color:#fff;font-size:17px}
 .big{width:100%;padding:16px;border:0;border-radius:14px;background:#1a73e8;color:#fff;font-size:18px;font-weight:800;margin-top:10px}
 .note{font-size:12px;color:#7f93a8;margin-top:14px;line-height:1.6}
+/* v78: trang dau gon — khoi 'PAIR dang lam' / 'Cai dat' */
+.khoi{background:#13203a;border:1px solid #24405f;border-radius:16px;padding:12px 14px 4px;margin:12px 0}
+.khoi-t{font-size:13px;font-weight:800;color:#9fb3c8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;cursor:pointer;list-style:none}
+.khoi-t small{text-transform:none;letter-spacing:0;font-weight:600;color:#7f93a8}
+details.khoi summary::-webkit-details-marker{display:none}
+details.khoi summary::after{content:"▾";float:right;color:#7f93a8}
+details.khoi[open] summary::after{content:"▴"}
+details.khoi{padding-bottom:4px}
+.hang2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hang2 .fld{margin:8px 0}
+.fld label small{color:#7f93a8;font-weight:500}
+.big.nho{padding:13px;font-size:15px}
+/* v79: cung nhan dien voi web QC LAP THU (navy Dai Dung + vach do), chu phu sang hon (ngoai nang), nhan so lieu ro */
+.hero{background:linear-gradient(135deg,#12305f,#1c4587);border-top:4px solid #E2231A}
+.big,#types button.on,#zpre button.on,#toolBtn.on,.tbtn.on{background:#1c4587}
+#shoot{background:#2563EB}
+#stats .st span{font-size:12.5px;color:#c3d3e4;line-height:1.25}#stats .st b{font-size:26px}
+.fld input::placeholder{font-size:14px;color:#8fa3bf}
+.note{font-size:13px;color:#aebccf}
+details.khoi.hd summary::after{content:"▾"}details.khoi.hd[open] summary::after{content:"▴"}
+#setup .fld input:focus{border-color:#1a73e8;outline:none;box-shadow:0 0 0 3px #1a73e833}
 #cam{position:fixed;inset:0;background:#000;z-index:1;display:flex;flex-direction:column}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
 #vwrap{position:relative;flex:1;min-height:0;overflow:hidden}
 #vid{width:100%;height:100%;object-fit:contain;background:#000;display:block}   /* v41: NHIN DUNG = LUU DUNG khung, khong phong to gia */
@@ -136,25 +157,36 @@ button:active{transform:scale(.95)}
   </div>
   <div id="stats"></div>
   <div id="stoInfo"></div>
-  <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
-  <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
-  <div class="fld"><label>Người kiểm tra (tùy chọn)</label><input id="iUser" placeholder="Tên bạn"></div>
-  <div class="fld"><label>Xưởng / Tổ (để lên báo cáo ngày)</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
-  <div class="fld"><label>Tổng số điểm Dim A / Gap theo bản vẽ của PAIR này (để trống = chưa biết) — để Kiểm thiếu bắt được cả điểm CUỐI chưa chụp</label>
-    <div style="display:flex;gap:8px">
-      <input id="tgA" inputmode="numeric" placeholder="Dim A" style="flex:1;min-width:0">
-      <input id="tgG" inputmode="numeric" placeholder="Gap" style="flex:1;min-width:0">
-    </div></div>
-  <div class="fld"><label>Link Drive (dán 1 lần — để gửi ảnh lên Drive)</label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
+  <div class="khoi"><div class="khoi-t">PAIR đang làm</div>
+    <div class="hang2">
+      <div class="fld"><label>Section</label><input id="iSec" inputmode="numeric" placeholder="VD: 13"></div>
+      <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
+    </div>
+    <div class="hang2">
+      <div class="fld"><label>Tổng điểm Dim A <small>(theo bản vẽ · trống = chưa rõ)</small></label><input id="tgA" inputmode="numeric" placeholder="vd 22"></div>
+      <div class="fld"><label>Tổng điểm Gap <small>(trống = chưa rõ)</small></label><input id="tgG" inputmode="numeric" placeholder="vd 6"></div>
+    </div>
+  </div>
+  <button class="big" onclick="start()">📷 Mở camera</button>
+  <div class="hang2" style="margin-top:8px">
+    <button class="big nho" style="background:#15803d;margin:0" onclick="moBaoCao('xuat')">📄 XUẤT BÁO CÁO</button>
+    <button class="big nho" style="background:#1F4E78;margin:0" onclick="moBaoCao(true)">🤖 Soát bằng AI</button>
+  </div>
+  <button class="big nho" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
+  <details class="khoi" id="caiDat"><summary class="khoi-t">⚙ Cài đặt <small>(làm 1 lần)</small></summary>
+    <div class="fld"><label>Link máy chủ báo cáo <small>(vd https://qcanha.com/laptu)</small></label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
+    <div class="fld"><label>Link Drive <small>(để gửi ảnh lên Drive)</small></label><input id="iDrive" placeholder="https://script.google.com/macros/s/.../exec"></div>
+    <div class="hang2">
+      <div class="fld"><label>Người kiểm tra</label><input id="iUser" placeholder="Tên bạn"></div>
+      <div class="fld"><label>Xưởng / Tổ</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
+    </div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
-  <button class="big" onclick="start()">📷 Mở camera</button>
-  <button class="big" style="background:#334155;margin-top:8px" onclick="xemCu()">📂 Xem lại PAIR cũ</button>
-  <button class="big" style="background:#15803d;margin-top:8px" onclick="moBaoCao()">📄 Xem &amp; xuất báo cáo PAIR này</button>
-  <div class="fld" style="margin-top:8px"><label>Link máy chủ báo cáo (dán 1 lần — vd http://192.168.1.10:8010)</label><input id="iBC" inputmode="url" placeholder="http://… hoặc https://…"></div>
-  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Gap · Landing bar (LB) · Bevel (BV — vát mép) · Marking · Độ dày.<br>
-  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua các vị trí · Gap = 3 ảnh/điểm, mỗi tấm tự lưu thêm 1 bản tên P (G1.1 + P1.1) · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
-  🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
+  </details>
+  <details class="khoi hd"><summary class="khoi-t">📖 Hướng dẫn chụp</summary>
+  <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Point &amp; Gap (G) · Landing bar (LB) · Bevel (BV — vát mép) · Marking (MK) · Marking Map (MAP) · Tên Part · Độ dày.<br>
+  A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua 8 góc · Gap = 3 ảnh/điểm (báo cáo ghi "Point and Gap") · MAP = 1 ảnh · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
+  🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p></details>
 </section>
 
 <section id="cam" class="hide">
@@ -198,7 +230,7 @@ button:active{transform:scale(.95)}
 <section id="lib" class="hide">
   <header>
     <button onclick="closeLib()" style="background:#26405f;color:#fff;padding:9px 14px;border-radius:10px;border:0;font-weight:700">‹ Chụp tiếp</button>
-    <button onclick="goHome()" style="background:#6b5b95;color:#fff;padding:9px 12px;border-radius:10px;border:0;font-weight:700" title="Về trang chủ">🏠</button>
+    <button onclick="goHome()" style="background:#334155;color:#fff;padding:9px 12px;border-radius:10px;border:0;font-weight:700" title="Về trang chủ">🏠</button>
     <h2 id="libTitle">Ảnh</h2>
   </header>
   <div id="libTools">
@@ -227,6 +259,7 @@ const TYPES=[
  {k:'LB', name:'Landing bar', kind:'num'},   // v70: LB1.1, LB1.2… — bam › de sang thanh ke tiep (khong tu nhay)
  {k:'BV', name:'Bevel',    kind:'num', per:1},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
+ {k:'MAP',name:'Marking Map',kind:'num',per:1},   // v77: may chu can MAP1 cho muc 'Marking Map' trong bao cao
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
@@ -1012,12 +1045,13 @@ function missReport(sec,pair){
   seq('Điểm B','B',/^B(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
+  const has=pre=>Object.keys(bases).some(b=>b.startsWith(pre));
   seq('Point & Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
   seq('Landing bar','LB',/^LB(\d+)$/,'không có (bỏ qua nếu section không có)');
-  {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
+  {const MKS=['0T','0B','90T','90B','180T','180B','270T','270B'];   // v77: 8 goc (nhu may chu); bo 1-1/2-2/3-3 (camera khong tao duoc)
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
-   R.push({t:'Marking (chuẩn 11)',n:11-miss.length,of:11,miss:miss,half:[]});}
-  const has=pre=>Object.keys(bases).some(b=>b.startsWith(pre));
+   R.push({t:'Marking (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
+  R.push({t:'Marking Map',n:has('MAP')?1:0,of:1,miss:has('MAP')?[]:[{lb:'Chụp MAP1',k:'MAP'}],half:[]});
   R.push({t:'Tổng thể',n:has('TT')?1:0,of:1,miss:has('TT')?[]:[{lb:'Chụp Tổng thể',k:'TT'}],half:[]});
   R.push({t:'Độ dày',n:has('TH')?1:0,of:null,miss:[],half:[],note:has('TH')?'✓':'(không bắt buộc)'});
   return {R:R,total:Object.values(bases).reduce((a,b)=>a+b,0)};
@@ -1190,7 +1224,7 @@ function openLib(){
       lt.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#b45309;flex:0 0 auto;display:none';
       lt.onclick=lamTiepCu; h.appendChild(lt);
       const fc=document.createElement('button'); fc.id='fCu'; fc.textContent='📂 PAIR cũ';
-      fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#6b5b95;flex:0 0 auto';
+      fc.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#334155;flex:0 0 auto';
       fc.onclick=xemCu; h.appendChild(fc);
       const fd=document.createElement('button'); fd.id='fDrive'; fd.textContent='☁️ Đã chụp (Drive)';
       fd.style.cssText='border:0;border-radius:12px;padding:6px 10px;font-size:12px;font-weight:800;color:#fff;background:#0b74de;flex:0 0 auto';
@@ -1245,7 +1279,7 @@ function cardHTML(p,i){
     return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+esc(p.name)+'</b></div>';
   }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-  const chips=['TT','L','A','PL','B','G','LB','BV','MK','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  const chips=['TT','L','A','PL','B','G','LB','BV','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+esc(p.name)+'" onchange="rename('+i+',this.value)"><button onclick="toggleType(this)" style="flex:0 0 auto;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:800;background:#334155;color:#fff">Loại ⌄</button><button class="del" onclick="del('+i+')">✕</button></div><div class="chips" style="display:none">'+chips+'</div>';
 }
 let _viewList=[], _rgT=null;
@@ -1399,7 +1433,8 @@ function nextName(k,self){
   if(k==='G'||k==='GAP'){let mx=0;pl.forEach(p=>{const m=/^G(?:AP)?(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'G'+n+'.1';}
   if(k==='P'){let mx=0;pl.forEach(p=>{const m=/^P(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'P'+n+'.1';}
   if(k==='BV'){let mx=0;pl.forEach(p=>{const m=/^BV(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'BV'+(mx+1)+'.1';}
-  if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=pl.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
+  if(k==='MAP'){let mx=0;pl.forEach(p=>{const m=/^MAP(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'MAP'+(mx+1)+'.1';}   // v77: may chu can MAP1 (MAP.1 = ten la)
+  if(k==='MK'){const L=['0T','0B','90T','90B','180T','180B','270T','270B'];const co=L.find(x=>!pl.some(p=>p.name.split('.')[0]==='MK'+x));return 'MK'+(co||L[L.length-1]);}   // v77: goc dau tien CHUA co
   const c=pl.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
 }
 function quickName(i,k){
@@ -1553,19 +1588,35 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v74-bo-p';
+const APP_VER='v79-nhan-dien';
+// v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
+//      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
 // v73: nut 📄 BAO CAO — mo may chu QC LAP THU dung Section/PAIR dang chon: may chu tu keo anh moi tu Drive,
 //      AI doc so phan / but long, xuat bao cao (Excel + Word + PDF). App nay KHONG giu key AI / bo may bao cao.
-function moBaoCao(){
+// v76: nut 📄 XUAT BAO CAO — 1 cham: tu gui anh PAIR nay con thieu len Drive -> mo may chu ?xuat=1 -> may chu TU lay anh,
+//      AI doc so, dung Word + Excel, xuat PDF, soat -> hien nut tai file. (moBaoCao(true) = soat AI nhu v75)
+async function moBaoCao(che_do){
+  const soat=che_do===true, xuat=che_do==='xuat';
   const u=String($('iBC').value||'').trim().replace(/\/+$/,'');
   if(!/^https?:\/\/[^\s]+$/i.test(u)){alert('Dán "Link máy chủ báo cáo" 1 lần (ô ngay dưới nút), vd http://192.168.1.10:8010');try{$('iBC').focus();}catch(e){}return;}
   const s=SEC(), p=PAIR();
   if(!s||!p){alert('Chưa nhập Section / PAIR.');return;}
   try{localStorage.setItem('ev_iBC',u);}catch(e){}
-  const chua=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p).length;
-  if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\nVẫn mở báo cáo? (gửi Drive xong bấm lại để bổ sung)'))return;
-  window.open(u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p),'_blank');
+  let w=null;
+  const dangBay=()=>photos.some(x=>x._sending&&(x.sec||'')===s&&(x.pair||'')===p);
+  if((xuat||soat)&&(dangBay()||photos.some(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p)))w=window.open('about:blank','_blank');   // v77: mo tab NGAY luc bam (sau await trinh duyet chan popup)
+  for(let i=0;i<60&&dangBay();i++){           // v77: anh dang bay len Drive -> doi (toi da 30 s)
+    if(i===0)toast('⏳ Đợi ảnh đang gửi lên Drive…');await new Promise(r=>setTimeout(r,500));}
+  const chuaDs=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p), chua=chuaDs.length, drv=DRV();
+  if(xuat&&chua&&drv){                       // gui truoc anh con thieu cua PAIR nay -> may chu lay du anh
+    toast('☁️ Gửi '+chua+' ảnh PAIR này lên Drive trước…');
+    let ok=0;for(const x of chuaDs){if(await sendOne(drv,x))ok++;try{updBadge(x);}catch(e){}}
+    try{updLibTitle();}catch(e){}
+    if(ok<chua&&!confirm((chua-ok)+' ảnh chưa gửi được (mất mạng?).\nVẫn xuất báo cáo với ảnh máy chủ đã có?')){if(w)w.close();return;}
+  }else if(chua&&!confirm(chua+' ảnh của PAIR này CHƯA lên Drive — máy chủ chưa thấy các ảnh đó.\n'+(soat?'Vẫn soát? (AI chỉ thấy ảnh đã nhận vào máy chủ)':'Vẫn xuất báo cáo? (gửi Drive xong bấm lại để bổ sung)')))return;
+  const link=u+'/?sec='+encodeURIComponent(s)+'&pair='+encodeURIComponent(p)+(soat?'&soat=1':'')+(xuat?'&xuat=1':'');
+  if(w&&!w.closed)w.location.href=link;else window.open(link,'_blank');
 }
 try{const _vc=document.getElementById('verChip'); if(_vc)_vc.textContent=APP_VER.split('-')[0];}catch(e){}
 try{const _vi=document.getElementById('verInfo'); if(_vi)_vi.textContent=APP_VER;}catch(e){}
@@ -1619,9 +1670,9 @@ function updStats(){
   const d0=new Date(); d0.setHours(0,0,0,0);
   const today=loc.filter(p=>(p.t||0)>=d0.getTime());
   const pairsToday=new Set(today.map(p=>(p.sec||'')+'|'+(p.pair||''))).size;
-  el.innerHTML='<div class="st"><b>'+today.length+'</b><span>ảnh hôm nay · '+pairsToday+' PAIR</span></div>'
-    +'<div class="st '+(pend?'warn':'ok')+'"><b>'+pend+'</b><span>'+(pend?'⏳ chưa lên Drive':'✓ đã lên Drive hết')+'</span></div>'
-    +'<div class="st"><b>'+loc.length+'</b><span>ảnh trong máy</span></div>';
+  el.innerHTML='<div class="st"><b>'+today.length+'</b><span>Ảnh hôm nay'+(pairsToday?' · '+pairsToday+' PAIR':'')+'</span></div>'
+    +'<div class="st '+(pend?'warn':'ok')+'"><b>'+pend+'</b><span>'+(pend?'⏳ Chờ lên Drive':'✓ Đã lên Drive hết')+'</span></div>'
+    +'<div class="st"><b>'+loc.length+'</b><span>Trong máy</span></div>';
   try{ if(navigator.storage&&navigator.storage.estimate) navigator.storage.estimate().then(e=>{
     const mb=x=>(x/1048576).toFixed(0)+' MB';
     $('stoInfo').textContent='Bộ nhớ app: '+mb(e.usage||0)+(e.quota?(' / '+mb(e.quota)):'')+(navigator.onLine?' · 🟢 có mạng':' · 🔴 mất mạng');
