@@ -27,6 +27,14 @@ details.khoi{padding-bottom:4px}
 .hang2 .fld{margin:8px 0}
 .fld label small{color:#7f93a8;font-weight:500}
 .big.nho{padding:13px;font-size:15px}
+/* v79: cung nhan dien voi web QC LAP THU (navy Dai Dung + vach do), chu phu sang hon (ngoai nang), nhan so lieu ro */
+.hero{background:linear-gradient(135deg,#12305f,#1c4587);border-top:4px solid #E2231A}
+.big,#types button.on,#zpre button.on,#toolBtn.on,.tbtn.on{background:#1c4587}
+#shoot{background:#2563EB}
+#stats .st span{font-size:12.5px;color:#c3d3e4;line-height:1.25}#stats .st b{font-size:26px}
+.fld input::placeholder{font-size:14px;color:#7f93a8}
+.note{font-size:13px;color:#aebccf}
+details.khoi.hd summary::after{content:"▾"}details.khoi.hd[open] summary::after{content:"▴"}
 #setup .fld input:focus{border-color:#1a73e8;outline:none;box-shadow:0 0 0 3px #1a73e833}
 #cam{position:fixed;inset:0;background:#000;z-index:1;display:flex;flex-direction:column}   /* v67: tao lop rieng -> nut noi cua camera khong de len thu vien */
 #vwrap{position:relative;flex:1;min-height:0;overflow:hidden}
@@ -155,8 +163,8 @@ button:active{transform:scale(.95)}
       <div class="fld"><label>PAIR</label><input id="iPair" placeholder="VD: 010"></div>
     </div>
     <div class="hang2">
-      <div class="fld"><label>Tổng điểm Dim A <small>(theo bản vẽ)</small></label><input id="tgA" inputmode="numeric" placeholder="để trống = chưa biết"></div>
-      <div class="fld"><label>Tổng điểm Gap</label><input id="tgG" inputmode="numeric" placeholder="để trống = chưa biết"></div>
+      <div class="fld"><label>Tổng điểm Dim A <small>(theo bản vẽ · trống = chưa rõ)</small></label><input id="tgA" inputmode="numeric" placeholder="vd 22"></div>
+      <div class="fld"><label>Tổng điểm Gap <small>(trống = chưa rõ)</small></label><input id="tgG" inputmode="numeric" placeholder="vd 6"></div>
     </div>
   </div>
   <button class="big" onclick="start()">📷 Mở camera</button>
@@ -175,9 +183,10 @@ button:active{transform:scale(.95)}
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   </details>
+  <details class="khoi hd"><summary class="khoi-t">📖 Hướng dẫn chụp</summary>
   <p class="note"><b>Loại điểm:</b> Tổng thể · Level (L) · Kích thước (A) · Thả dọi (PL) · Point &amp; Gap (G) · Landing bar (LB) · Bevel (BV — vát mép) · Marking (MK) · Marking Map (MAP) · Tên Part · Độ dày.<br>
   A = 2 ảnh/điểm (tự sang điểm sau) · L = 1 ảnh · Marking tự chạy qua 8 góc · Gap = 3 ảnh/điểm (báo cáo ghi "Point and Gap") · MAP = 1 ảnh · LB chụp bao nhiêu ảnh tuỳ, bấm › sang thanh sau · Tổng thể/Độ dày chụp tự do.<br>
-  🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p>
+  🔒 Ảnh <b>tự lưu vào máy</b> ngay khi chụp — đóng app/mất mạng vẫn còn. Gửi Drive xong vẫn giữ bản dự phòng (bấm “Dọn ảnh đã gửi” để xóa khi chắc chắn).</p></details>
 </section>
 
 <section id="cam" class="hide">
@@ -1579,7 +1588,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v78-giao-dien';
+const APP_VER='v79-nhan-dien';
 // v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
 //      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
@@ -1661,9 +1670,9 @@ function updStats(){
   const d0=new Date(); d0.setHours(0,0,0,0);
   const today=loc.filter(p=>(p.t||0)>=d0.getTime());
   const pairsToday=new Set(today.map(p=>(p.sec||'')+'|'+(p.pair||''))).size;
-  el.innerHTML='<div class="st"><b>'+today.length+'</b><span>ảnh hôm nay · '+pairsToday+' PAIR</span></div>'
-    +'<div class="st '+(pend?'warn':'ok')+'"><b>'+pend+'</b><span>'+(pend?'⏳ chưa lên Drive':'✓ đã lên Drive hết')+'</span></div>'
-    +'<div class="st"><b>'+loc.length+'</b><span>ảnh trong máy</span></div>';
+  el.innerHTML='<div class="st"><b>'+today.length+'</b><span>Ảnh hôm nay'+(pairsToday?' · '+pairsToday+' PAIR':'')+'</span></div>'
+    +'<div class="st '+(pend?'warn':'ok')+'"><b>'+pend+'</b><span>'+(pend?'⏳ Chờ lên Drive':'✓ Đã lên Drive hết')+'</span></div>'
+    +'<div class="st"><b>'+loc.length+'</b><span>Trong máy</span></div>';
   try{ if(navigator.storage&&navigator.storage.estimate) navigator.storage.estimate().then(e=>{
     const mb=x=>(x/1048576).toFixed(0)+' MB';
     $('stoInfo').textContent='Bộ nhớ app: '+mb(e.usage||0)+(e.quota?(' / '+mb(e.quota)):'')+(navigator.onLine?' · 🟢 có mạng':' · 🔴 mất mạng');
