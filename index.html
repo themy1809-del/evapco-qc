@@ -228,6 +228,7 @@ const TYPES=[
  {k:'LB', name:'Landing bar', kind:'num'},   // v70: LB1.1, LB1.2… — bam › de sang thanh ke tiep (khong tu nhay)
  {k:'BV', name:'Bevel',    kind:'num', per:1},
  {k:'MK', name:'Marking', kind:'list',per:1,list:['0T','0B','90T','90B','180T','180B','270T','270B']},
+ {k:'MAP',name:'Marking Map',kind:'num',per:1},   // v77: may chu can MAP1 cho muc 'Marking Map' trong bao cao
  {k:'PART',name:'Tên Part',kind:'freepos',def:'',ph:'RSD1016 (để trống = AI đọc sau)'},
  {k:'TH', name:'Độ dày',   kind:'free'},
  {k:'PS', name:'📌 Phát sinh', kind:'free'},
@@ -1013,12 +1014,13 @@ function missReport(sec,pair){
   seq('Điểm B','B',/^B(\d+)$/,'không có (bỏ qua nếu section không có)');
   {const S=nums(/^L(\d+)$/),miss=[];for(let i=1;i<=8;i++)if(!S.has(i))miss.push({lb:'L'+i,k:'L',v:i});
    R.push({t:'Level (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
+  const has=pre=>Object.keys(bases).some(b=>b.startsWith(pre));
   seq('Point & Gap','G',/^G(?:AP)?(\d+)(?:-\d+)?$/);
   seq('Landing bar','LB',/^LB(\d+)$/,'không có (bỏ qua nếu section không có)');
-  {const MKS=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];
+  {const MKS=['0T','0B','90T','90B','180T','180B','270T','270B'];   // v77: 8 goc (nhu may chu); bo 1-1/2-2/3-3 (camera khong tao duoc)
    const miss=MKS.filter(k=>!bases['MK'+k]).map(k=>({lb:'MK'+k,k:'MK',v:k}));
-   R.push({t:'Marking (chuẩn 11)',n:11-miss.length,of:11,miss:miss,half:[]});}
-  const has=pre=>Object.keys(bases).some(b=>b.startsWith(pre));
+   R.push({t:'Marking (chuẩn 8)',n:8-miss.length,of:8,miss:miss,half:[]});}
+  R.push({t:'Marking Map',n:has('MAP')?1:0,of:1,miss:has('MAP')?[]:[{lb:'Chụp MAP1',k:'MAP'}],half:[]});
   R.push({t:'Tổng thể',n:has('TT')?1:0,of:1,miss:has('TT')?[]:[{lb:'Chụp Tổng thể',k:'TT'}],half:[]});
   R.push({t:'Độ dày',n:has('TH')?1:0,of:null,miss:[],half:[],note:has('TH')?'✓':'(không bắt buộc)'});
   return {R:R,total:Object.values(bases).reduce((a,b)=>a+b,0)};
@@ -1246,7 +1248,7 @@ function cardHTML(p,i){
     return '<div style="position:relative"><div onclick="viewPhoto('+i+')" style="cursor:zoom-in;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b3b6f;color:#cfe3ff;font-weight:800;border-radius:8px">☁️<span style="font-size:11px">đã chụp · bấm xem</span></div><span class="bdg upok">☁️ Drive</span></div><div class="r"><b style="flex:1;text-align:center;font-size:13px">'+esc(p.name)+'</b></div>';
   }
   const badge='<span class="bdg '+(p.up?'upok':'uppend')+'">'+(p.up?'✓ Drive':'⏳ chưa gửi')+'</span>';
-  const chips=['TT','L','A','PL','B','G','LB','BV','MK','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
+  const chips=['TT','L','A','PL','B','G','LB','BV','MK','MAP','TH','PART'].map(k=>'<button class="chip" onclick="quickName('+i+',\''+k+'\')">'+k+'</button>').join('');
   return '<div style="position:relative"><img loading="lazy" decoding="async" src="data:image/jpeg;base64,'+(p.tb||p.b64||'')+'" onclick="viewPhoto('+i+')" style="cursor:zoom-in">'+badge+'</div><div class="r"><input value="'+esc(p.name)+'" onchange="rename('+i+',this.value)"><button onclick="toggleType(this)" style="flex:0 0 auto;border:0;border-radius:8px;padding:0 10px;font-size:12px;font-weight:800;background:#334155;color:#fff">Loại ⌄</button><button class="del" onclick="del('+i+')">✕</button></div><div class="chips" style="display:none">'+chips+'</div>';
 }
 let _viewList=[], _rgT=null;
@@ -1400,7 +1402,8 @@ function nextName(k,self){
   if(k==='G'||k==='GAP'){let mx=0;pl.forEach(p=>{const m=/^G(?:AP)?(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'G'+n+'.1';}
   if(k==='P'){let mx=0;pl.forEach(p=>{const m=/^P(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});const n=mx+1;return 'P'+n+'.1';}
   if(k==='BV'){let mx=0;pl.forEach(p=>{const m=/^BV(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'BV'+(mx+1)+'.1';}
-  if(k==='MK'){const L=['1-1','2-2','3-3','0T','0B','90T','90B','180T','180B','270T','270B'];const u=pl.filter(p=>/^MK/.test(p.name)).length;return 'MK'+L[Math.min(u,L.length-1)];}
+  if(k==='MAP'){let mx=0;pl.forEach(p=>{const m=/^MAP(\d+)/.exec(p.name);if(m)mx=Math.max(mx,+m[1]);});return 'MAP'+(mx+1)+'.1';}   // v77: may chu can MAP1 (MAP.1 = ten la)
+  if(k==='MK'){const L=['0T','0B','90T','90B','180T','180B','270T','270B'];const co=L.find(x=>!pl.some(p=>p.name.split('.')[0]==='MK'+x));return 'MK'+(co||L[L.length-1]);}   // v77: goc dau tien CHUA co
   const c=pl.filter(p=>p.name.split('.')[0]===k).length;return k+'.'+(c+1);
 }
 function quickName(i,k){
@@ -1554,7 +1557,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v76-xuat-bc';
+const APP_VER='v77-map-part';
 // v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
 //      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
@@ -1569,10 +1572,13 @@ async function moBaoCao(che_do){
   const s=SEC(), p=PAIR();
   if(!s||!p){alert('Chưa nhập Section / PAIR.');return;}
   try{localStorage.setItem('ev_iBC',u);}catch(e){}
-  const chuaDs=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p), chua=chuaDs.length, drv=DRV();
   let w=null;
+  const dangBay=()=>photos.some(x=>x._sending&&(x.sec||'')===s&&(x.pair||'')===p);
+  if((xuat||soat)&&(dangBay()||photos.some(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p)))w=window.open('about:blank','_blank');   // v77: mo tab NGAY luc bam (sau await trinh duyet chan popup)
+  for(let i=0;i<60&&dangBay();i++){           // v77: anh dang bay len Drive -> doi (toi da 30 s)
+    if(i===0)toast('⏳ Đợi ảnh đang gửi lên Drive…');await new Promise(r=>setTimeout(r,500));}
+  const chuaDs=photos.filter(x=>!x.up&&(x.sec||'')===s&&(x.pair||'')===p), chua=chuaDs.length, drv=DRV();
   if(xuat&&chua&&drv){                       // gui truoc anh con thieu cua PAIR nay -> may chu lay du anh
-    w=window.open('about:blank','_blank');   // mo tab ngay luc bam (sau khi gui xong trinh duyet co the chan popup)
     toast('☁️ Gửi '+chua+' ảnh PAIR này lên Drive trước…');
     let ok=0;for(const x of chuaDs){if(await sendOne(drv,x))ok++;try{updBadge(x);}catch(e){}}
     try{updLibTitle();}catch(e){}
