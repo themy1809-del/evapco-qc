@@ -27,7 +27,8 @@ details.khoi{padding-bottom:4px}
 .hang2 .fld{margin:8px 0}
 .fld label small{color:#7f93a8;font-weight:500}
 .big.nho{padding:13px;font-size:15px}
-/* v79: cung nhan dien voi web QC LAP THU (navy Dai Dung + vach do), chu phu sang hon (ngoai nang), nhan so lieu ro */
+/* v80: bot giat khi chup (tat luu-ve-may mac dinh, hoan gui ngam 4 s, 1 anh/lan khi dang chup, bo canvas thua, tat track khi mo thu vien)
+   v79: cung nhan dien voi web QC LAP THU (navy Dai Dung + vach do), chu phu sang hon (ngoai nang), nhan so lieu ro */
 .hero{background:linear-gradient(135deg,#12305f,#1c4587);border-top:4px solid #E2231A}
 .big,#types button.on,#zpre button.on,#toolBtn.on,.tbtn.on{background:#1c4587}
 #shoot{background:#2563EB}
@@ -180,7 +181,7 @@ button:active{transform:scale(.95)}
       <div class="fld"><label>Người kiểm tra</label><input id="iUser" placeholder="Tên bạn"></div>
       <div class="fld"><label>Xưởng / Tổ</label><input id="iWk" placeholder="VD: X1 - Tổ 3"></div>
     </div>
-  <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" checked style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
+  <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iAutoSave" style="width:22px;height:22px;flex:0 0 auto"><span>💾 Lưu ảnh vào MÁY mỗi khi chụp (thư mục Tải về / Files) — phòng mất</span></label></div>
   <div class="fld"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="iBurst" checked style="width:22px;height:22px;flex:0 0 auto"><span>🎯 Chụp NÉT: mỗi lần bấm lấy 3 khung, tự giữ khung nét nhất (chậm hơn ~0,2 giây)</span></label></div>
   </details>
   <details class="khoi hd"><summary class="khoi-t">📖 Hướng dẫn chụp</summary>
@@ -323,7 +324,7 @@ async function loadSaved(){
 try{const cb=$('iBurst');cb.checked=burstOn();cb.onchange=()=>{try{localStorage.setItem('ev_burst',cb.checked?'1':'0');}catch(e){}};}catch(e){}
 try{tgLoadUI();$('iSec').addEventListener('input',tgLoadUI);$('iPair').addEventListener('input',tgLoadUI);
   ['tgA','tgG'].forEach(id=>$(id).addEventListener('input',tgSaveUI));}catch(e){}   // v67: luu ngay khi go, dung PAIR dang hien
-try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as!=='0'); _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
+try{ const _as=localStorage.getItem('ev_autosave'); const _cb=$('iAutoSave'); if(_cb){ _cb.checked=(_as==='1');   /* v80: mac dinh TAT — anh da nam trong IndexedDB + Drive; bat len thi moi tam = 1 luot tai ve (giat) */ _cb.onchange=function(){localStorage.setItem('ev_autosave',_cb.checked?'1':'0');}; if(IS_IOS){ _cb.checked=false; const _f=_cb.closest('.fld'); if(_f)_f.style.display='none'; } } }catch(e){}
 // ===== NUT TIEP TUC: mo lai app la lam tiep dung cho dang do (khong phai tu dau) =====
 setTimeout(function(){
   try{
@@ -875,7 +876,7 @@ async function grabSharp(){
   // do net vung giua 3 khung; tu khung thu 3, khung nao dat >=85% muc net cao nhat thi CHEP NGAY chinh khung do (chep khung lon dung 1 lan)
   if(!burstOn()) return grabUpright();
   let bs=0;
-  for(let k=0;k<6;k++){
+  for(let k=0;k<4;k++){   // v80: toi da 4 khung (truoc 6) — bot tre man trap
     if(k) await nextFrame();
     let s=0; try{s=doNet();}catch(e){}
     if(s>bs) bs=s;
@@ -975,9 +976,10 @@ async function snap(fromQ,ev){
   /*full-frame: khong cat 4:3, thu ca khung vua*/
   if(!zCaps && zoom>1){const nw=sw/zoom,nh=sh/zoom;sx+=(sw-nw)/2;sy+=(sh-nh)/2;sw=nw;sh=nh;}
   const sc=Math.min(1,4096/Math.max(sw,sh)),cw=Math.round(sw*sc),ch=Math.round(sh*sc);   // v63: tran 4096 (cu 2048) — giu du net cho chu phan
-  const c=document.createElement('canvas');c.width=cw;c.height=ch;
-  c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
-  try{S.width=0;}catch(_){}   // nha RAM khung goc
+  let c=S;   // v80: khong cat / khong thu nho -> dung thang khung da xoay (truoc: chep sang canvas thu 2 cung co = +32MB RAM + GC moi lan bam)
+  if(sx||sy||sw!==vw||sh!==vh||sc<1){ c=document.createElement('canvas');c.width=cw;c.height=ch;
+    c.getContext('2d').drawImage(S,sx,sy,sw,sh,0,0,cw,ch);
+    try{S.width=0;}catch(_){} }   // nha RAM khung goc
   await luuAnh(c,big);
   }finally{ _snapBusy=false; if(_snapQ>0){ _snapQ--; setTimeout(()=>snap(true),0); } }
 }
@@ -1005,11 +1007,12 @@ async function luuAnh(c,big){
   const tnow=Date.now(), id='p'+tnow+Math.random().toString(36).slice(2,6);
   idbPut({id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,b64,tb,gen:big});   // anh goc: lưu ngay vào máy — không lo mất
   try{ const _cb=$('iAutoSave'); if((!_cb||_cb.checked) && !IS_IOS) saveToDevice(nm,b64); }catch(e){}   // luu file vao may CHI tren Android; iOS chan luu ngam -> bo qua de KHONG hien bang download moi lan chup
+  try{c.width=0;tc2.width=0;}catch(_){}   // v80: nha RAM 2 canvas ngay (khong cho GC)
   const ph={id,t:tnow,sec:SEC(),pair:PAIR(),name:nm,tb,gen:big};      // RAM: chi thumbnail nhe -> het lag
   photos.unshift(ph);
   // v74 (anh My 22/10): BO nhan ban P tu anh Gap — bao cao nay ghi "Point and Gap: 1-1" thang tu anh G (v72 luu them P1.1 -> trung anh)
   const pNm='';
-  pump();   // gửi NGẦM ngay khi chụp; CHỈ pump() (bỏ autoSend để không gửi 2 lần) — pump lo gửi lại tới khi MỌI ảnh lên Drive
+  pumpSau(4000);   // v80: gửi NGẦM sau 4 s kể từ lần chụp cuối (không tranh CPU/mạng với khung hình + nén ảnh kế tiếp) — pump lo gửi lại tới khi MỌI ảnh lên Drive
   $('flash').style.opacity='.7';setTimeout(()=>$('flash').style.opacity='0',120);
   if(navigator.vibrate)navigator.vibrate(40);
   tiengTach();
@@ -1212,6 +1215,7 @@ async function syncFromDrive(silent){
 function openLib(){
   _snapQ=0; try{toggleTools(false);}catch(e){}
   try{$('vid').pause();}catch(e){}   // v36: chi TAM DUNG khung hinh (khong tat track -> het man den)
+  try{if(camTrack)camTrack.enabled=false;}catch(e){}   // v80: ngung decode 8MP ngam trong luc cuon thu vien (closeLib bat lai)
   try{ syncFromDrive(true); }catch(e){}   // mo thu vien la tu keo danh sach Drive ve (biet da chup gi)
   if(!document.getElementById('fAll')){
     const h=document.querySelector('#lib header');
@@ -1250,6 +1254,7 @@ function goHome(){   // ve TRANG DAU (setup): tat camera cho nhe may, giu nguyen
 }
 function closeLib(){
   _snapQ=0;
+  try{if(camTrack)camTrack.enabled=true;}catch(e){}   // v80: bat lai track da tat luc mo thu vien (ca nhanh xem PAIR cu)
   if(_vScope){                       // v42: dang xem PAIR CU -> dong la ve MAN HINH DAU (khong dung cham pair dang lam)
     _vScope=null; _rgSeq++;
     document.getElementById('grid').innerHTML='';
@@ -1540,6 +1545,8 @@ async function autoSend(p){   // gui nen 1 anh ngay khi chup (v32: toi da 2 cung
 }
 // HANG DOI GUI CHAC CHAN: gui lai TAT CA anh chua len Drive toi khi xong (khong bo sot khi chup nhanh / rot mang)
 let _pumping=false;
+let _pumpT=null;
+function pumpSau(ms){ clearTimeout(_pumpT); _pumpT=setTimeout(pump,ms); }   // v80: hoan gui ngam
 async function pump(){
   if(_pumping) return;
   var url=DRV(); if(!url || !navigator.onLine) return;
@@ -1549,7 +1556,7 @@ async function pump(){
     while(navigator.onLine && guard++<300){
       const todo=photos.filter(p=>!p.up);
       if(!todo.length) break;
-      const batch=todo.slice(0,3);
+      const batch=todo.slice(0,camOnScreen()?1:3);   // v80: dang o man chup -> 1 anh/lan (3 JSON 5MB song song lam khung hinh khung)
       await Promise.all(batch.map(p=>sendOne(url,p).catch(()=>{})));
       try{ if(typeof syncUI==='function') syncUI(); }catch(_){}
       if(batch.every(p=>!p.up)) await new Promise(r=>setTimeout(r,4000));   // ca batch that bai (mang chap chon) -> nghi roi thu lai
@@ -1588,7 +1595,7 @@ async function sendDrive(){
 
 window.addEventListener('beforeunload',function(e){ if(photos.some(p=>!p.up)){ e.preventDefault(); e.returnValue='Còn ảnh CHƯA gửi lên Drive!'; } });
 // ===== TU CAP NHAT: mo app -> kiem tra ban moi tren mang -> tu tai lai =====
-const APP_VER='v79-nhan-dien';
+const APP_VER='v80-hieu-nang';
 // v75: nut 🤖 SOAT AI — mo may chu QC LAP THU dung PAIR (?soat=1): may chu TU soat ca PAIR bang AI (chi doc) va hien
 //      'SAN SANG GUI' / 'CON N VIEC' ngay tren dien thoai. Key AI + bo soat nam tren MAY CHU, app nay khong giu.
 // v74: bo nhan ban anh Gap ra anh Point (P1.1) — chi luu G1.1; bao cao may chu tu ghi 'Point and Gap'.
